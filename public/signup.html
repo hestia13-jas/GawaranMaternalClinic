@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Create Account | Gawaran Maternal Clinic</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/main.css" />
+  <link rel="icon" href="/assets/logo.jpg" type="image/jpeg" />
+</head>
+<body class="auth-page">
+  <div class="auth-card wide">
+    <div class="auth-header">
+      <img src="/assets/logo.jpg" alt="" class="brand-mini" width="64" height="64" />
+      <h1>Create Account</h1>
+      <p>Register for the patient portal</p>
+    </div>
+
+    <div id="formError" class="form-error" role="alert"></div>
+    <div id="formSuccess" class="form-success" role="status"></div>
+
+    <form id="signupForm" novalidate>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="firstName">First Name</label>
+          <input type="text" id="firstName" name="firstName" autocomplete="given-name" pattern="[A-Za-z\s'-]{2,60}" required />
+          <div class="form-warning" id="firstNameWarning">First name must be 2 to 60 letters only.</div>
+        </div>
+        <div class="form-group">
+          <label for="middleName">Middle Name <span class="optional-label"></span></label>
+          <input type="text" id="middleName" name="middleName" autocomplete="additional-name" pattern="[A-Za-z\s'-]{2,60}" />
+          <div class="form-warning" id="middleNameWarning">Middle name is optional, but must contain letters only when provided.</div>
+        </div>
+        <div class="form-group">
+          <label for="lastName">Last Name</label>
+          <input type="text" id="lastName" name="lastName" autocomplete="family-name" pattern="[A-Za-z\s'-]{2,60}" required />
+          <div class="form-warning" id="lastNameWarning">Last name must be 2 to 60 letters only.</div>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="phone">Phone Number</label>
+        <input type="tel" id="phone" name="phone" autocomplete="tel" inputmode="numeric" maxlength="11" pattern="09[0-9]{9}" required />
+        <div class="form-warning" id="phoneWarning">Phone number must be exactly 11 digits and start with 09.</div>
+      </div>
+
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" autocomplete="email" required />
+        <div class="form-warning" id="emailWarning">Please enter a valid email address.</div>
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" autocomplete="new-password" required minlength="8" />
+        <div class="form-warning" id="passwordWarning">Password must be 8 to 72 characters and include at least 1 uppercase letter, 1 number, and 1 special character.</div>
+      </div>
+
+      <div class="form-group">
+        <label for="confirmPassword">Confirm Password</label>
+        <input type="password" id="confirmPassword" name="confirmPassword" autocomplete="new-password" required />
+        <div class="form-warning" id="confirmPasswordWarning">Passwords do not match.</div>
+      </div>
+
+      <div class="form-check">
+        <input type="checkbox" id="acceptTerms" name="acceptTerms" required />
+        <label for="acceptTerms">I agree to the <button type="button" class="link-button" id="termsOpen">Terms of Service</button> and Privacy Policy</label>
+      </div>
+      <div class="form-warning" id="termsWarning">You must accept the Terms of Service.</div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Create Account</button>
+      </div>
+    </form>
+
+    <div class="form-footer">
+      Already have an account? <a href="/login.html">Sign In</a><br />
+      <a href="/" style="margin-top:0.5rem;display:inline-block;">Back to Home</a>
+    </div>
+  </div>
+
+  <div class="modal-backdrop" id="termsModal" hidden>
+    <div class="terms-modal" role="dialog" aria-modal="true" aria-labelledby="termsTitle">
+      <div class="terms-modal-head">
+        <h2 id="termsTitle">Terms of Service and Privacy Policy</h2>
+        <button type="button" class="modal-close" id="termsClose" aria-label="Close">&times;</button>
+      </div>
+      <div class="terms-modal-body">
+        <p>By creating an account, you agree to use the Gawaran Maternal Clinic portal only for your own clinic appointments, messages, feedback, and medical records.</p>
+        <p>Your health information is kept private and is used by authorized clinic staff for patient care, scheduling, communication, and record management.</p>
+        <p>You are responsible for keeping your password secure and for notifying the clinic if you notice unauthorized access or incorrect information in your account.</p>
+        <p>Submitted feedback may be displayed on the home page only when you choose to make it public.</p>
+      </div>
+      <div class="terms-modal-actions">
+        <button type="button" class="btn btn-primary" id="termsAccept">I understand</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/validation.js"></script>
+  <script src="/js/auth.js"></script>
+  <script>
+    initSignupForm();
+  </script>
+</body>
+</html>
