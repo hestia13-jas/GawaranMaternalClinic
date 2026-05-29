@@ -792,25 +792,53 @@ function renderAvailabilityMonths(bookedRows, doctorId, unavailableDays = [], cl
 
 function updateSlotOptions(bookedRows, unavailableDays = [], doctorId = '', closedDays = []) {
   const dateInput = document.getElementById('bookDate');
-  const slotSelect = document.getElementById('bookSlot');
+  const slotHidden = document.getElementById('bookSlot');
   const typeSelect = document.getElementById('bookType');
-  if (!dateInput || !slotSelect) return;
+  const wrap = document.getElementById('slotTableWrap');
+  const inner = document.getElementById('slotTableInner');
+  if (!dateInput || !slotHidden || !wrap || !inner) return;
   const dateText = dateInput.value;
+  if (!dateText) { wrap.style.display = 'none'; slotHidden.value = ''; return; }
+  wrap.style.display = '';
   const slots = clinicSlotsForDate(dateText);
   const restDay = doctorId && isDoctorUnavailable(unavailableDays, doctorId, dateText);
   const closed = isClinicClosed(closedDays, dateText);
   const past = isPastDate(dateText);
-  slotSelect.innerHTML = dateText && !restDay && !closed && !past
-    ? slots.map((slot) => {
-      const booked = isSlotBooked(bookedRows, dateText, slot);
-      const label = `${slot.startTime}-${slot.endTime} - ${slot.serviceName}`;
-      return `<option value="${slotDateTime(dateText, slot)}" data-type="${slot.serviceName}" ${booked ? 'disabled' : ''}>${booked ? 'Booked - ' : ''}${label}</option>`;
-    }).join('')
-    : `<option value="">${past ? 'Past dates cannot be booked' : closed ? 'Clinic closed on this date' : restDay ? 'Doctor unavailable on this date' : 'Choose a date first'}</option>`;
-  const firstOpen = Array.from(slotSelect.options).find((option) => !option.disabled);
-  if (firstOpen) {
-    slotSelect.value = firstOpen.value;
-    if (typeSelect) typeSelect.value = firstOpen.dataset.type || typeSelect.value;
+  if (past || closed || restDay) {
+    const reason = past ? 'Past dates cannot be booked.' : closed ? 'Clinic is closed on this date.' : 'Doctor is unavailable on this date.';
+    inner.innerHTML = `<p class="empty-state compact" style="color:#dc2626">${reason}</p>`;
+    slotHidden.value = '';
+    return;
+  }
+  let firstAvail = null;
+  const rows = slots.map((slot) => {
+    const booked = isSlotBooked(bookedRows, dateText, slot);
+    const val = slotDateTime(dateText, slot);
+    if (!booked && !firstAvail) firstAvail = { val, type: slot.serviceName };
+    return `<tr class="slot-row ${booked ? 'slot-booked' : 'slot-available'}" data-slot-val="${booked ? '' : val}" data-slot-type="${escapeHtml(slot.serviceName)}" style="${booked ? 'opacity:.5;cursor:default' : 'cursor:pointer'}">
+      <td style="padding:.5rem .75rem;font-weight:600;white-space:nowrap">${slot.startTime}\u2013${slot.endTime}</td>
+      <td style="padding:.5rem .75rem;width:100%">${escapeHtml(slot.serviceName)}</td>
+      <td style="padding:.5rem .75rem;text-align:right;white-space:nowrap">${booked ? '<span style="color:#9ca3af;font-size:.82rem">Booked</span>' : '<span class="badge badge-confirmed" style="font-size:.78rem">Available</span>'}</td>
+    </tr>`;
+  }).join('');
+  inner.innerHTML = `<table class="data-table slot-picker-table" style="width:100%;border-radius:.5rem;overflow:hidden"><thead><tr>
+    <th style="padding:.5rem .75rem">Time</th><th style="padding:.5rem .75rem">Service</th><th style="padding:.5rem .75rem;text-align:right">Status</th>
+  </tr></thead><tbody>${rows}</tbody></table>`;
+  inner.querySelectorAll('.slot-row.slot-available').forEach((row) => {
+    row.addEventListener('click', () => {
+      inner.querySelectorAll('.slot-row').forEach((r) => r.style.outline = '');
+      row.style.outline = '2px solid var(--teal-600, #0d9488)';
+      slotHidden.value = row.dataset.slotVal;
+      if (typeSelect) typeSelect.value = row.dataset.slotType || typeSelect.value;
+    });
+  });
+  if (firstAvail) {
+    slotHidden.value = firstAvail.val;
+    if (typeSelect) typeSelect.value = firstAvail.type;
+    const firstRow = inner.querySelector('.slot-row.slot-available');
+    if (firstRow) firstRow.style.outline = '2px solid var(--teal-600, #0d9488)';
+  } else {
+    slotHidden.value = '';
   }
 }
 
@@ -903,7 +931,11 @@ async function renderAppointments(el) {
       <div class="form-field"><label for="bookType">Appointment type</label><select id="bookType">${serviceOptions.map((name) => `<option>${escapeHtml(name)}</option>`).join('')}</select></div>
       <div class="form-field"><label for="bookDoctor">Preferred doctor</label><select id="bookDoctor"><option value="">No preference</option>${doctors.map((d) => `<option value="${d.id}" data-name="${d.name}">${d.name}</option>`).join('')}</select></div>
       <div class="form-field"><label for="bookDate">Date</label><input type="date" id="bookDate" min="${localDateKey()}" max="${maxBookDate}" /></div>
-      <div class="form-field"><label for="bookSlot">Clinic schedule</label><select id="bookSlot"><option value="">Choose a date first</option></select></div>
+      <div class="form-field form-field-wide" id="slotTableWrap" style="display:none">
+        <label style="display:block;margin-bottom:.5rem;font-weight:600">Clinic schedule &mdash; select a time slot</label>
+        <div id="slotTableInner"></div>
+        <input type="hidden" id="bookSlot" />
+      </div>
       <div class="form-field-wide availability-months" data-availability-body>${renderAvailabilityMonths(bookedRows, '', unavailableDays, closedDays, monthKey)}</div>
       <div class="form-field form-field-wide"><label for="bookNotes">Notes for the clinic</label><textarea id="bookNotes" rows="4" placeholder="Optional details, symptoms, or special requests"></textarea></div>
       <div class="form-actions-row">
@@ -947,8 +979,12 @@ async function renderAppointments(el) {
       msg.className = 'form-inline-msg error';
       return;
     }
-    msg.textContent = res?.error || res?.message || 'Appointment request submitted.';
-    msg.className = `form-inline-msg ${res?.error ? 'error' : 'success'}`;
+    const rawErr = res?.error || '';
+    const friendlyErr = rawErr.includes('row-level security') || rawErr.includes('violates')
+      ? 'Unable to book appointment. Please contact the clinic directly or try again later.'
+      : rawErr;
+    msg.textContent = friendlyErr || res?.message || 'Appointment request submitted.';
+    msg.className = `form-inline-msg ${friendlyErr ? 'error' : 'success'}`;
     if (res?.appointment) {
       await refreshNotifications();
       setTimeout(() => navigate('appointments'), 800);
