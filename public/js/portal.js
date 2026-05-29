@@ -929,7 +929,7 @@ async function renderAppointments(el) {
   if (role === 'patient') {
     bookForm = `<div class="panel appointment-panel"><div class="panel-head form-panel-head"><div><h2>Book new appointment</h2><p>Choose a service, preferred provider, and available time.</p></div></div><div class="panel-body professional-form" id="bookForm">
       <div class="form-field"><label for="bookType">Appointment type</label><select id="bookType">${serviceOptions.map((name) => `<option>${escapeHtml(name)}</option>`).join('')}</select></div>
-      <div class="form-field"><label for="bookDoctor">Preferred doctor</label><select id="bookDoctor"><option value="">No preference</option>${doctors.map((d) => `<option value="${d.id}" data-name="${d.name}">${d.name}</option>`).join('')}</select></div>
+      <div class="form-field"><label for="bookDoctor">Preferred doctor <span style="font-weight:400;color:var(--gray-500);font-size:.85em">(optional)</span></label><select id="bookDoctor"><option value="">Any available doctor</option>${doctors.map((d) => `<option value="${d.id}" data-name="${escapeHtml(d.name)}">${escapeHtml(d.name)}${d.specialization ? ` — ${escapeHtml(d.specialization)}` : ''}</option>`).join('')}</select>${doctors.length === 0 ? `<p class="form-hint" style="margin-top:.35rem;color:var(--gray-500)">No doctors on record yet — your appointment will be assigned by the clinic.</p>` : `<p class="form-hint" style="margin-top:.35rem;color:var(--gray-500)">Leaving this as "Any available doctor" will show all open slots and your appointment will be assigned by the clinic team.</p>`}</div>
       <div class="form-field"><label for="bookDate">Date</label><input type="date" id="bookDate" min="${localDateKey()}" max="${maxBookDate}" /></div>
       <div class="form-field form-field-wide" id="slotTableWrap" style="display:none">
         <label style="display:block;margin-bottom:.5rem;font-weight:600">Clinic schedule &mdash; select a time slot</label>
@@ -946,19 +946,46 @@ async function renderAppointments(el) {
   }
 
   const canApprove = role === 'admin' || role === 'doctor';
+
+  // Doctor sees their own schedule with full action controls; admin sees all
+  const tableTitle = role === 'doctor' ? 'My Appointment Schedule' : 'Appointments';
+  const tableHint = role === 'doctor'
+    ? `<p style="margin:.25rem 0 .75rem;font-size:.85rem;color:var(--gray-500)">Includes appointments where patients selected you or chose "Any available doctor". Use the actions to manage each visit.</p>`
+    : '';
+
   el.innerHTML = bookForm + adminClosePanel + `
     ${canApprove ? `<div class="panel" style="margin-bottom:1.25rem"><div class="panel-head"><h2>Schedule calendar</h2>${sourceText(data)}</div><div class="panel-body schedule-calendar-stack" data-schedule-wrap>${renderCalendar(rows, { unavailableDays, closedDays, canToggleUnavailable: role === 'doctor', canToggleClinicClosed: role === 'admin', monthKey })}</div></div>` : ''}
-    <div class="panel"><div class="panel-head"><h2>Appointments</h2>${sourceText(data)}</div><div class="panel-body" style="overflow-x:auto"><table class="data-table"><thead><tr>
-      <th>Patient</th><th>Type</th><th>Date</th><th>Provider</th><th>Status</th>${canApprove ? '<th>Action</th>' : ''}
+    <div class="panel"><div class="panel-head"><h2>${tableTitle}</h2>${sourceText(data)}</div><div class="panel-body">${tableHint}<div style="overflow-x:auto"><table class="data-table"><thead><tr>
+      ${role === 'patient' ? '<th>Doctor / Provider</th>' : '<th>Patient</th>'}<th>Type</th><th>Date</th>${role !== 'patient' ? '<th>Provider</th>' : ''}<th>Status</th>${canApprove ? '<th>Actions</th>' : ''}
     </tr></thead><tbody>
-      ${rows.length ? rows.map((a) => `<tr>
-        <td>${a.patient_name || '-'}</td><td>${a.type || '-'}</td><td>${fmtDate(a.date)}</td><td>${a.doctor || '-'}</td><td>${badge(a.status)}</td>
-        ${canApprove ? `<td class="table-actions">
-          <button type="button" class="btn btn-primary btn-xs" data-approve="${a.id}" ${a.status === 'confirmed' ? 'disabled' : ''}>Accept</button>
-          <button type="button" class="btn btn-outline btn-xs" data-deny="${a.id}" ${a.status === 'denied' ? 'disabled' : ''}>Deny</button>
-        </td>` : ''}
-      </tr>`).join('') : emptyTableRow(canApprove ? 6 : 5)}
-    </tbody></table></div></div>`;
+      ${rows.length ? rows.map((a) => {
+        const s = (a.status || 'pending').toLowerCase();
+        const isDone = s === 'done' || s === 'completed';
+        const isCancelled = s === 'cancelled' || s === 'denied';
+        const isConfirmed = s === 'confirmed';
+        const isPending = s === 'pending';
+        const providerDisplay = a.doctor
+          ? escapeHtml(a.doctor)
+          : '<span style="color:var(--gray-400);font-style:italic">Assigned by clinic</span>';
+        return `<tr>
+          ${role === 'patient'
+            ? `<td>${providerDisplay}</td>`
+            : `<td><strong>${escapeHtml(a.patient_name || '-')}</strong>${a.patient_phone ? `<br><small style="color:var(--gray-500)">${escapeHtml(a.patient_phone)}</small>` : ''}</td>`
+          }
+          <td>${escapeHtml(a.type || '-')}</td>
+          <td>${fmtDate(a.date)}</td>
+          ${role !== 'patient' ? `<td>${escapeHtml(a.doctor || '')}${!a.doctor ? '<span style="color:var(--gray-400);font-size:.82rem">Any / Unassigned</span>' : ''}</td>` : ''}
+          <td>${badge(a.status)}</td>
+          ${canApprove ? `<td class="table-actions" style="white-space:nowrap">
+            ${isPending ? `<button type="button" class="btn btn-primary btn-xs" data-approve="${a.id}">Accept</button>` : ''}
+            ${(isPending || isConfirmed) ? `<button type="button" class="btn btn-success btn-xs" data-done="${a.id}" title="Mark as completed">Done</button>` : ''}
+            ${(!isDone && !isCancelled) ? `<button type="button" class="btn btn-outline btn-xs" data-deny="${a.id}">Deny</button>` : ''}
+            ${(isConfirmed || isPending) ? `<button type="button" class="btn btn-danger btn-xs" data-cancel="${a.id}" title="Cancel this appointment">Cancel</button>` : ''}
+            ${isDone || isCancelled ? `<span style="color:var(--gray-400);font-size:.82rem">No actions</span>` : ''}
+          </td>` : ''}
+        </tr>`;
+      }).join('') : emptyTableRow(canApprove ? (role === 'patient' ? 4 : 6) : (role === 'patient' ? 3 : 5))}
+    </tbody></table></div></div></div>`;
 
   async function submitBooking() {
     const type = document.getElementById('bookType').value;
@@ -1131,20 +1158,35 @@ async function renderAppointments(el) {
   document.querySelectorAll('[data-deny]').forEach((btn) => {
     btn.addEventListener('click', () => decideAppointment(btn.dataset.deny, 'denied'));
   });
+  document.querySelectorAll('[data-done]').forEach((btn) => {
+    btn.addEventListener('click', () => decideAppointment(btn.dataset.done, 'done'));
+  });
+  document.querySelectorAll('[data-cancel]').forEach((btn) => {
+    btn.addEventListener('click', () => decideAppointment(btn.dataset.cancel, 'cancelled'));
+  });
 }
 
 async function decideAppointment(id, status) {
-  const reason = status === 'denied' ? window.prompt('Please provide the reason for denial:') : '';
-  if (status === 'denied' && (!reason || reason.trim().length < 5)) {
-    window.alert('A clear denial reason is required.');
-    return;
+  let reason = '';
+  if (status === 'denied') {
+    reason = window.prompt('Please provide the reason for denial:') ?? '';
+    if (!reason || reason.trim().length < 5) {
+      window.alert('A clear denial reason is required.');
+      return;
+    }
+  } else if (status === 'cancelled') {
+    reason = window.prompt('Reason for cancelling this appointment (the patient will be notified):') ?? '';
+    if (reason === null) return; // user hit Cancel on prompt
+  } else if (status === 'done') {
+    const confirmed = window.confirm('Mark this appointment as completed? This will be reflected on the patient\'s record.');
+    if (!confirmed) return;
   }
   const res = await api(`/appointments/${id}/status`, {
     method: 'PATCH',
-    body: JSON.stringify({ status, reason }),
+    body: JSON.stringify({ status, reason: reason.trim() }),
   });
   if (res?.error) {
-    window.alert(res.error);
+    showAlert(res.error, 'error');
     return;
   }
   await refreshNotifications();

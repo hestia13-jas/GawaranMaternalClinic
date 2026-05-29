@@ -1361,3 +1361,9 @@
   .booking-form,
   .professional-form { grid-template-columns: 1fr; }
 }
+.btn-success {
+  background: #16a34a;
+  color: #fff;
+  border-color: #16a34a;
+}
+.btn-success:hover { background: #15803d; border-color: #15803d; }
