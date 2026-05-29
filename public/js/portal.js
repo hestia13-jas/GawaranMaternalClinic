@@ -591,8 +591,8 @@ function drawPatientChart(data) {
   });
 }
 
-async function ensureDoctors() {
-  if (state.doctors.length) return state.doctors;
+async function ensureDoctors(forceRefresh = false) {
+  if (!forceRefresh && state.doctors.length) return state.doctors;
   const data = await api('/doctors');
   state.doctors = data?.doctors || [];
   return state.doctors;
@@ -908,7 +908,7 @@ async function renderAppointments(el) {
     : [...new Set([...clinicSlotsForDate(localDateKey()), ...FALLBACK_CLINIC_SLOTS.weekday].map((slot) => slot.serviceName))]);
   const data = await api('/appointments');
   const rows = data?.appointments || [];
-  const doctors = await ensureDoctors();
+  const doctors = await ensureDoctors(true); // always refresh so dropdown is current
   const doctorIdForAvail = role === 'doctor' ? state.user.id : '';
   const availability = role === 'patient' || role === 'doctor' || role === 'admin'
     ? await api(availabilityPath(monthKey, doctorIdForAvail))
@@ -927,16 +927,16 @@ async function renderAppointments(el) {
 
   let bookForm = '';
   if (role === 'patient') {
-    bookForm = `<div class="panel appointment-panel"><div class="panel-head form-panel-head"><div><h2>Book new appointment</h2><p>Choose a service, preferred provider, and available time.</p></div></div><div class="panel-body professional-form" id="bookForm">
+    bookForm = `<div class="panel appointment-panel"><div class="panel-head form-panel-head"><div><h2>Book new appointment</h2><p>Choose a calendar date first, then select the service, doctor, and time.</p></div></div><div class="panel-body professional-form" id="bookForm">
+      <div class="form-field-wide availability-months" data-availability-body>${renderAvailabilityMonths(bookedRows, '', unavailableDays, closedDays, monthKey)}</div>
+      <div class="form-field"><label for="bookDate">Selected date</label><input type="date" id="bookDate" min="${localDateKey()}" max="${maxBookDate}" /></div>
       <div class="form-field"><label for="bookType">Appointment type</label><select id="bookType">${serviceOptions.map((name) => `<option>${escapeHtml(name)}</option>`).join('')}</select></div>
-      <div class="form-field"><label for="bookDoctor">Preferred doctor <span style="font-weight:400;color:var(--gray-500);font-size:.85em">(optional)</span></label><select id="bookDoctor"><option value="">Any available doctor</option>${doctors.map((d) => `<option value="${d.id}" data-name="${escapeHtml(d.name)}">${escapeHtml(d.name)}${d.specialization ? ` — ${escapeHtml(d.specialization)}` : ''}</option>`).join('')}</select>${doctors.length === 0 ? `<p class="form-hint" style="margin-top:.35rem;color:var(--gray-500)">No doctors on record yet — your appointment will be assigned by the clinic.</p>` : `<p class="form-hint" style="margin-top:.35rem;color:var(--gray-500)">Leaving this as "Any available doctor" will show all open slots and your appointment will be assigned by the clinic team.</p>`}</div>
-      <div class="form-field"><label for="bookDate">Date</label><input type="date" id="bookDate" min="${localDateKey()}" max="${maxBookDate}" /></div>
+      <div class="form-field"><label for="bookDoctor">Preferred doctor <span style="font-weight:400;color:var(--gray-500);font-size:.85em">(optional)</span></label><select id="bookDoctor"><option value="">Any available doctor</option>${doctors.map((d) => `<option value="${d.id}" data-name="${escapeHtml(d.name)}">${escapeHtml(d.name)}${d.specialization ? ` - ${escapeHtml(d.specialization)}` : ''}</option>`).join('')}</select>${doctors.length === 0 ? `<p class="form-hint" style="margin-top:.35rem;color:var(--gray-500)">No doctors on record yet; your appointment will be assigned by the clinic.</p>` : `<p class="form-hint" style="margin-top:.35rem;color:var(--gray-500)">Leaving this as "Any available doctor" lets all matching doctors and admins review the request.</p>`}</div>
       <div class="form-field form-field-wide" id="slotTableWrap" style="display:none">
-        <label style="display:block;margin-bottom:.5rem;font-weight:600">Clinic schedule &mdash; select a time slot</label>
+        <label style="display:block;margin-bottom:.5rem;font-weight:600">Clinic schedule - select a time slot</label>
         <div id="slotTableInner"></div>
         <input type="hidden" id="bookSlot" />
       </div>
-      <div class="form-field-wide availability-months" data-availability-body>${renderAvailabilityMonths(bookedRows, '', unavailableDays, closedDays, monthKey)}</div>
       <div class="form-field form-field-wide"><label for="bookNotes">Notes for the clinic</label><textarea id="bookNotes" rows="4" placeholder="Optional details, symptoms, or special requests"></textarea></div>
       <div class="form-actions-row">
         <button type="button" class="btn btn-primary" id="bookSubmit">${icon('calendar')} Submit</button>
@@ -948,21 +948,51 @@ async function renderAppointments(el) {
   const canApprove = role === 'admin' || role === 'doctor';
 
   // Doctor sees their own schedule with full action controls; admin sees all
-  const tableTitle = role === 'doctor' ? 'My Appointment Schedule' : 'Appointments';
+  const tableTitle = role === 'doctor' ? 'My Appointment Schedule' : role === 'admin' ? 'All Appointments' : 'Appointments';
   const tableHint = role === 'doctor'
     ? `<p style="margin:.25rem 0 .75rem;font-size:.85rem;color:var(--gray-500)">Includes appointments where patients selected you or chose "Any available doctor". Use the actions to manage each visit.</p>`
-    : '';
+    : role === 'admin'
+      ? `<p style="margin:.25rem 0 .75rem;font-size:.85rem;color:var(--gray-500)">All clinic appointments. Accept, deny, mark done, or cancel each visit below.</p>`
+      : '';
+
+  const pendingRows = canApprove ? rows.filter((a) => (a.status || 'pending').toLowerCase() === 'pending') : [];
+  const historyStatuses = new Set(['done', 'completed', 'cancelled', 'denied']);
+  const activeRows = rows.filter((a) => !historyStatuses.has((a.status || 'pending').toLowerCase()));
+  const historyRows = rows.filter((a) => historyStatuses.has((a.status || 'pending').toLowerCase()));
+  const pendingApprovalPanel = canApprove ? `
+    <div class="panel" style="margin-bottom:1.25rem;border-left:4px solid var(--teal-600,#0d9488)">
+      <div class="panel-head"><h2>${icon('calendar')} Pending Approval <span style="background:var(--teal-600,#0d9488);color:#fff;border-radius:999px;padding:.15rem .55rem;font-size:.78rem;margin-left:.4rem">${pendingRows.length}</span></h2>${sourceText(data)}</div>
+      <div class="panel-body">
+        <p style="margin:.25rem 0 .75rem;font-size:.85rem;color:var(--gray-500)">${role === 'doctor' ? 'Appointment requests from your patients waiting for your approval.' : 'New appointment requests from patients waiting for clinic approval.'}</p>
+        <div style="overflow-x:auto"><table class="data-table"><thead><tr>
+          <th>Patient</th><th>Type</th><th>Date</th><th>Provider</th><th>Actions</th>
+        </tr></thead><tbody>
+          ${pendingRows.length ? pendingRows.map((a) => `<tr>
+            <td><strong>${escapeHtml(a.patient_name || '-')}</strong>${a.patient_phone ? `<br><small style="color:var(--gray-500)">${escapeHtml(a.patient_phone)}</small>` : ''}</td>
+            <td>${escapeHtml(a.type || '-')}</td>
+            <td>${fmtDate(a.date)}</td>
+            <td>${escapeHtml(a.doctor || '')}${!a.doctor ? '<span style="color:var(--gray-400);font-size:.82rem">Any / Unassigned</span>' : ''}</td>
+            <td class="table-actions" style="white-space:nowrap">
+              <button type="button" class="btn btn-primary btn-xs" data-approve="${a.id}">Accept</button>
+              <button type="button" class="btn btn-outline btn-xs" data-deny="${a.id}">Deny</button>
+            </td>
+          </tr>`).join('') : emptyTableRow(5, 'No pending appointment requests.')}
+        </tbody></table></div>
+      </div>
+    </div>` : '';
 
   el.innerHTML = bookForm + adminClosePanel + `
-    ${canApprove ? `<div class="panel" style="margin-bottom:1.25rem"><div class="panel-head"><h2>Schedule calendar</h2>${sourceText(data)}</div><div class="panel-body schedule-calendar-stack" data-schedule-wrap>${renderCalendar(rows, { unavailableDays, closedDays, canToggleUnavailable: role === 'doctor', canToggleClinicClosed: role === 'admin', monthKey })}</div></div>` : ''}
+    ${canApprove ? `<div class="panel" style="margin-bottom:1.25rem"><div class="panel-head"><h2>Schedule calendar</h2>${sourceText(data)}</div><div class="panel-body schedule-calendar-stack" data-schedule-wrap>${renderCalendar(bookedRows, { unavailableDays, closedDays, canToggleUnavailable: role === 'doctor', canToggleClinicClosed: role === 'admin', monthKey })}</div></div>` : ''}
+    ${pendingApprovalPanel}
     <div class="panel"><div class="panel-head"><h2>${tableTitle}</h2>${sourceText(data)}</div><div class="panel-body">${tableHint}<div style="overflow-x:auto"><table class="data-table"><thead><tr>
       ${role === 'patient' ? '<th>Doctor / Provider</th>' : '<th>Patient</th>'}<th>Type</th><th>Date</th>${role !== 'patient' ? '<th>Provider</th>' : ''}<th>Status</th>${canApprove ? '<th>Actions</th>' : ''}
     </tr></thead><tbody>
-      ${rows.length ? rows.map((a) => {
+      ${activeRows.length ? activeRows.map((a) => {
         const s = (a.status || 'pending').toLowerCase();
         const isDone = s === 'done' || s === 'completed';
         const isCancelled = s === 'cancelled' || s === 'denied';
         const isConfirmed = s === 'confirmed';
+        const isMoved = s === 'moved';
         const isPending = s === 'pending';
         const providerDisplay = a.doctor
           ? escapeHtml(a.doctor)
@@ -978,13 +1008,33 @@ async function renderAppointments(el) {
           <td>${badge(a.status)}</td>
           ${canApprove ? `<td class="table-actions" style="white-space:nowrap">
             ${isPending ? `<button type="button" class="btn btn-primary btn-xs" data-approve="${a.id}">Accept</button>` : ''}
-            ${(isPending || isConfirmed) ? `<button type="button" class="btn btn-success btn-xs" data-done="${a.id}" title="Mark as completed">Done</button>` : ''}
+            ${(isPending || isConfirmed || isMoved) ? `<button type="button" class="btn btn-success btn-xs" data-done="${a.id}" title="Mark as completed">Done</button>` : ''}
+            ${(isPending || isConfirmed || isMoved) ? `<button type="button" class="btn btn-outline btn-xs" data-move="${a.id}" title="Move this appointment">Move</button>` : ''}
             ${(!isDone && !isCancelled) ? `<button type="button" class="btn btn-outline btn-xs" data-deny="${a.id}">Deny</button>` : ''}
-            ${(isConfirmed || isPending) ? `<button type="button" class="btn btn-danger btn-xs" data-cancel="${a.id}" title="Cancel this appointment">Cancel</button>` : ''}
+            ${(isConfirmed || isPending || isMoved) ? `<button type="button" class="btn btn-danger btn-xs" data-cancel="${a.id}" title="Cancel this appointment">Cancel</button>` : ''}
             ${isDone || isCancelled ? `<span style="color:var(--gray-400);font-size:.82rem">No actions</span>` : ''}
           </td>` : ''}
         </tr>`;
-      }).join('') : emptyTableRow(canApprove ? (role === 'patient' ? 4 : 6) : (role === 'patient' ? 3 : 5))}
+      }).join('') : emptyTableRow(canApprove ? (role === 'patient' ? 5 : 6) : (role === 'patient' ? 4 : 5), 'No active appointments.')}
+    </tbody></table></div></div></div>
+    <div class="panel" style="margin-top:1.25rem"><div class="panel-head"><h2>Appointment history</h2>${sourceText(data)}</div><div class="panel-body"><div style="overflow-x:auto"><table class="data-table"><thead><tr>
+      ${role === 'patient' ? '<th>Doctor / Provider</th>' : '<th>Patient</th>'}<th>Type</th><th>Date</th>${role !== 'patient' ? '<th>Provider</th>' : ''}<th>Status</th>
+    </tr></thead><tbody>
+      ${historyRows.length ? historyRows.map((a) => {
+        const providerDisplay = a.doctor
+          ? escapeHtml(a.doctor)
+          : '<span style="color:var(--gray-400);font-style:italic">Assigned by clinic</span>';
+        return `<tr>
+          ${role === 'patient'
+            ? `<td>${providerDisplay}</td>`
+            : `<td><strong>${escapeHtml(a.patient_name || '-')}</strong>${a.patient_phone ? `<br><small style="color:var(--gray-500)">${escapeHtml(a.patient_phone)}</small>` : ''}</td>`
+          }
+          <td>${escapeHtml(a.type || '-')}</td>
+          <td>${fmtDate(a.date)}</td>
+          ${role !== 'patient' ? `<td>${escapeHtml(a.doctor || '')}${!a.doctor ? '<span style="color:var(--gray-400);font-size:.82rem">Any / Unassigned</span>' : ''}</td>` : ''}
+          <td>${badge(a.status)}</td>
+        </tr>`;
+      }).join('') : emptyTableRow(role === 'patient' ? 4 : 5, 'No appointment history yet.')}
     </tbody></table></div></div></div>`;
 
   async function submitBooking() {
@@ -1025,6 +1075,16 @@ async function renderAppointments(el) {
         updateSlotOptions(nextRows, unavailableDays, document.getElementById('bookDoctor')?.value || '', closedDays);
       });
     });
+    const availabilityBody = document.querySelector('[data-availability-body]');
+    if (availabilityBody && availabilityBody.dataset.wiredPick !== '1') {
+      availabilityBody.dataset.wiredPick = '1';
+      availabilityBody.addEventListener('click', (event) => {
+        const btn = event.target.closest('[data-pick-date]');
+        if (!btn || btn.disabled) return;
+        document.getElementById('bookDate').value = btn.dataset.pickDate;
+        updateSlotOptions(nextRows, unavailableDays, document.getElementById('bookDoctor')?.value || '', closedDays);
+      });
+    }
   }
 
   function wireCalendarDayActions() {
@@ -1065,7 +1125,7 @@ async function renderAppointments(el) {
 
     const scheduleWrap = document.querySelector('[data-schedule-wrap]');
     if (scheduleWrap) {
-      scheduleWrap.innerHTML = renderCalendar(rows, {
+      scheduleWrap.innerHTML = renderCalendar(bookedRows, {
         unavailableDays,
         closedDays,
         canToggleUnavailable: role === 'doctor',
@@ -1164,10 +1224,14 @@ async function renderAppointments(el) {
   document.querySelectorAll('[data-cancel]').forEach((btn) => {
     btn.addEventListener('click', () => decideAppointment(btn.dataset.cancel, 'cancelled'));
   });
+  document.querySelectorAll('[data-move]').forEach((btn) => {
+    btn.addEventListener('click', () => decideAppointment(btn.dataset.move, 'moved'));
+  });
 }
 
 async function decideAppointment(id, status) {
   let reason = '';
+  let newDate = '';
   if (status === 'denied') {
     reason = window.prompt('Please provide the reason for denial:') ?? '';
     if (!reason || reason.trim().length < 5) {
@@ -1175,15 +1239,31 @@ async function decideAppointment(id, status) {
       return;
     }
   } else if (status === 'cancelled') {
-    reason = window.prompt('Reason for cancelling this appointment (the patient will be notified):') ?? '';
-    if (reason === null) return; // user hit Cancel on prompt
+    const response = window.prompt('Reason for cancelling this appointment (the patient will be notified):');
+    if (response === null) return;
+    reason = response;
+    if (reason.trim().length < 3) {
+      window.alert('A cancellation reason is required.');
+      return;
+    }
   } else if (status === 'done') {
     const confirmed = window.confirm('Mark this appointment as completed? This will be reflected on the patient\'s record.');
     if (!confirmed) return;
+  } else if (status === 'moved') {
+    const response = window.prompt('Enter the new appointment date and time (YYYY-MM-DD HH:MM):');
+    if (response === null) return;
+    const cleaned = response.trim().replace(' ', 'T');
+    const parsed = new Date(cleaned);
+    if (!cleaned || Number.isNaN(parsed.getTime())) {
+      window.alert('Enter a valid date and time.');
+      return;
+    }
+    newDate = cleaned.length === 16 ? cleaned : parsed.toISOString();
+    reason = window.prompt('Reason or note for moving this appointment (optional):') ?? '';
   }
   const res = await api(`/appointments/${id}/status`, {
     method: 'PATCH',
-    body: JSON.stringify({ status, reason: reason.trim() }),
+    body: JSON.stringify({ status, reason: reason.trim(), date: newDate }),
   });
   if (res?.error) {
     showAlert(res.error, 'error');

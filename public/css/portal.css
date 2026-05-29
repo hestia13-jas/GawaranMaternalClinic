@@ -312,6 +312,9 @@
 .badge-pending { background: #fffaeb; color: #93370d; }
 .badge-confirmed { background: #ecfdf3; color: #067647; }
 .badge-denied { background: #fef3f2; color: #b42318; }
+.badge-cancelled { background: #fef3f2; color: #b42318; }
+.badge-moved { background: #eff8ff; color: #175cd3; }
+.badge-done { background: #ecfdf3; color: #067647; }
 .badge-admitted { background: #eff8ff; color: #175cd3; }
 .badge-completed { background: #ecfdf3; color: #067647; }
 .badge-active { background: #ecfdf3; color: #067647; }

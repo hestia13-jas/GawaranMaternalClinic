@@ -110,6 +110,23 @@ function isPastDateKey(value) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value) && value < todayKey();
 }
 
+function appointmentPublicRow(a) {
+  const doctorName = a.doctor_name && a.doctor_name !== 'Unassigned' ? a.doctor_name : '';
+  return {
+    id: a.id,
+    patient_name: a.patient_name || 'Patient',
+    patient_phone: a.patient_phone || null,
+    type: a.type || 'Appointment',
+    date: a.appointment_date,
+    status: a.status || 'pending',
+    doctor: doctorName,
+    doctor_id: a.doctor_id,
+    notes: a.notes,
+    created_at: a.created_at,
+    updated_at: a.updated_at,
+  };
+}
+
 function publicProfile(user) {
   const firstName = user.first_name || user.user_metadata?.first_name || 'User';
   const lastName = user.last_name || user.user_metadata?.last_name || '';
@@ -646,7 +663,6 @@ router.get('/appointments', verifyToken, async (req, res) => {
 
   let query = supabaseAdmin.from('appointments').select('*').order('appointment_date', { ascending: true });
   if (req.user.role === 'patient') query = query.eq('patient_id', req.user.id);
-  if (req.user.role === 'doctor') query = query.eq('doctor_id', req.user.id);
 
   const { data, error } = await query.limit(100);
   if (error) {
@@ -655,18 +671,12 @@ router.get('/appointments', verifyToken, async (req, res) => {
     }
     return res.status(500).json({ error: error.message });
   }
+  const rows = req.user.role === 'doctor'
+    ? (data || []).filter((appointment) => !appointment.doctor_id || appointment.doctor_id === req.user.id)
+    : (data || []);
 
   res.json({
-    appointments: (data || []).map((a) => ({
-      id: a.id,
-      patient_name: a.patient_name || 'Patient',
-      type: a.type || 'Appointment',
-      date: a.appointment_date,
-      status: a.status || 'pending',
-      doctor: a.doctor_name || 'Unassigned',
-      doctor_id: a.doctor_id,
-      notes: a.notes,
-    })),
+    appointments: rows.map(appointmentPublicRow),
     ...empty(),
   });
 });
@@ -688,7 +698,7 @@ router.get('/appointments/availability', verifyToken, async (req, res) => {
         && date >= start
         && date <= end
         && (!doctorId || appointment.doctor_id === doctorId)
-        && ['pending', 'confirmed'].includes(appointment.status);
+        && ['pending', 'confirmed', 'moved'].includes(appointment.status);
     });
     return res.json({ appointments: rows, unavailableDays, closedDays: [], source: 'local-database' });
   }
@@ -698,7 +708,7 @@ router.get('/appointments/availability', verifyToken, async (req, res) => {
     .select('id, doctor_id, appointment_date, status')
     .gte('appointment_date', start.toISOString())
     .lte('appointment_date', end.toISOString())
-    .in('status', ['pending', 'confirmed']);
+    .in('status', ['pending', 'confirmed', 'moved']);
   if (doctorId) query = query.eq('doctor_id', doctorId);
   const [{ data, error }, unavailableResult, closedResult] = await Promise.all([
     query.limit(500),
@@ -851,7 +861,7 @@ router.post('/appointments', verifyToken, async (req, res) => {
       .from('appointments')
       .select('id, appointment_date')
       .eq('doctor_id', doctorId)
-      .in('status', ['pending', 'confirmed']);
+      .in('status', ['pending', 'confirmed', 'moved']);
     if (conflictReadError) return res.status(500).json({ error: conflictReadError.message });
     const conflict = (confirmed || []).find((item) => normalizeSlot(item.appointment_date) === slot);
     if (conflict) {
@@ -891,12 +901,23 @@ router.post('/appointments', verifyToken, async (req, res) => {
   if (doctorId) {
     notificationTargets.push(doctorId);
   } else {
-    const { data: admins } = await supabaseAdmin.from('profiles').select('id, email, first_name, last_name').eq('role', 'admin');
+    const [{ data: admins }, { data: doctors }] = await Promise.all([
+      supabaseAdmin.from('profiles').select('id, email, first_name, last_name').eq('role', 'admin').eq('is_active', true),
+      supabaseAdmin.from('profiles').select('id, email, first_name, last_name').eq('role', 'doctor').eq('is_active', true),
+    ]);
     notificationTargets.push(...(admins || []).map((admin) => admin.id));
+    notificationTargets.push(...(doctors || []).map((doctor) => doctor.id));
     for (const admin of admins || []) {
       await sendAppointmentRequestEmail({
         to: admin.email,
         recipientName: fullName(admin),
+        appointment: { ...data, date, patient_name: fullName(req.user), type },
+      });
+    }
+    for (const doctor of doctors || []) {
+      await sendAppointmentRequestEmail({
+        to: doctor.email,
+        recipientName: fullName(doctor),
         appointment: { ...data, date, patient_name: fullName(req.user), type },
       });
     }
@@ -1042,14 +1063,19 @@ router.get('/doctors', verifyToken, async (req, res) => {
 
   const { data, error } = await supabaseAdmin
     .from('profiles')
-    .select('id, first_name, last_name, email')
+    .select('id, first_name, last_name, email, staff_schedules(department)')
     .eq('role', 'doctor')
     .eq('is_active', true)
     .order('last_name', { ascending: true });
 
   if (error) return res.status(500).json({ error: error.message });
   res.json({
-    doctors: (data || []).map((doctor) => ({ id: doctor.id, name: fullName(doctor), email: doctor.email })),
+    doctors: (data || []).map((doctor) => ({
+      id: doctor.id,
+      name: fullName(doctor),
+      email: doctor.email,
+      specialization: doctor.staff_schedules?.find((item) => item.department)?.department || 'General maternity care',
+    })),
     source: 'database',
   });
 });
@@ -1058,17 +1084,25 @@ router.patch('/appointments/:id/status', verifyToken, requireRole('admin', 'doct
   const appointmentId = req.params.id;
   const status = String(req.body?.status || '').trim();
   const reason = String(req.body?.reason || '').trim();
+  const newDate = String(req.body?.date || req.body?.newDate || '').trim();
 
-  if (!['confirmed', 'denied'].includes(status)) {
-    return res.status(400).json({ error: 'Status must be confirmed or denied.' });
+  if (!['confirmed', 'denied', 'done', 'cancelled', 'moved'].includes(status)) {
+    return res.status(400).json({ error: 'Status must be confirmed, denied, done, cancelled, or moved.' });
   }
   if (status === 'denied' && reason.length < 5) {
     return res.status(400).json({ error: 'A clear denial reason is required.' });
   }
+  if (status === 'cancelled' && reason.length < 3) {
+    return res.status(400).json({ error: 'A cancellation reason is required.' });
+  }
+  if (status === 'moved') {
+    if (!newDate || Number.isNaN(Date.parse(newDate))) return res.status(400).json({ error: 'Choose a valid new appointment date.' });
+    if (new Date(newDate) < new Date()) return res.status(400).json({ error: 'The new appointment date must be in the future.' });
+  }
 
   if (req.user.isLocal || !supabaseAdmin) {
     try {
-      const appointment = updateLocalAppointmentStatus({ appointmentId, status, reason, actor: req.user });
+      const appointment = updateLocalAppointmentStatus({ appointmentId, status, reason, actor: req.user, date: newDate });
       if (!appointment) return res.status(404).json({ error: 'Appointment not found.' });
       await sendAppointmentEmail({
         to: appointment.patient_email,
@@ -1091,13 +1125,26 @@ router.patch('/appointments/:id/status', verifyToken, requireRole('admin', 'doct
 
   if (readError || !appointment) return res.status(404).json({ error: 'Appointment not found.' });
 
-  if (status === 'confirmed' && appointment.doctor_id) {
-    const slot = normalizeSlot(appointment.appointment_date);
+  if (status === 'moved') {
+    const sched = await refreshCache(supabaseAdmin);
+    if (!scheduleMatch(newDate, appointment.type, sched.slotsByDay)) {
+      return res.status(400).json({ error: 'Please choose a new date and time from the clinic schedule.' });
+    }
+  }
+
+  const assignedDoctorId = appointment.doctor_id || (req.user.role === 'doctor' && ['confirmed', 'moved'].includes(status) ? req.user.id : null);
+  const assignedDoctorName = appointment.doctor_name && appointment.doctor_name !== 'Unassigned'
+    ? appointment.doctor_name
+    : (req.user.role === 'doctor' && assignedDoctorId === req.user.id ? fullName(req.user) : appointment.doctor_name);
+  const targetDate = status === 'moved' ? newDate : appointment.appointment_date;
+
+  if (['confirmed', 'moved'].includes(status) && assignedDoctorId) {
+    const slot = normalizeSlot(targetDate);
     const { data: sameDoctor, error: conflictError } = await supabaseAdmin
       .from('appointments')
       .select('id, appointment_date')
-      .eq('doctor_id', appointment.doctor_id)
-      .eq('status', 'confirmed');
+      .eq('doctor_id', assignedDoctorId)
+      .in('status', ['pending', 'confirmed', 'moved']);
 
     if (conflictError) return res.status(500).json({ error: conflictError.message });
     const conflict = (sameDoctor || []).find((item) => item.id !== appointment.id && normalizeSlot(item.appointment_date) === slot);
@@ -1106,13 +1153,27 @@ router.patch('/appointments/:id/status', verifyToken, requireRole('admin', 'doct
     }
   }
 
-  const updateNotes = status === 'denied'
-    ? [appointment.notes, `Denied reason: ${reason}`].filter(Boolean).join('\n')
-    : appointment.notes;
+  const historyNote = status === 'denied'
+    ? `Denied reason: ${reason}`
+    : status === 'cancelled'
+      ? `Cancelled reason: ${reason}`
+      : status === 'moved'
+        ? `Moved from ${new Date(appointment.appointment_date).toLocaleString()} to ${new Date(newDate).toLocaleString()}${reason ? `: ${reason}` : ''}`
+        : status === 'done'
+          ? `Marked done by ${fullName(req.user)}`
+          : '';
+  const updateNotes = historyNote ? [appointment.notes, historyNote].filter(Boolean).join('\n') : appointment.notes;
+  const updatePayload = {
+    status: status === 'moved' ? 'moved' : status,
+    notes: updateNotes,
+    doctor_id: assignedDoctorId,
+    doctor_name: assignedDoctorName || null,
+  };
+  if (status === 'moved') updatePayload.appointment_date = newDate;
 
   const { data: updated, error: updateError } = await supabaseAdmin
     .from('appointments')
-    .update({ status, notes: updateNotes })
+    .update(updatePayload)
     .eq('id', appointmentId)
     .select()
     .single();
@@ -1126,10 +1187,20 @@ router.patch('/appointments/:id/status', verifyToken, requireRole('admin', 'doct
 
   await supabaseAdmin.from('notifications').insert({
     user_id: appointment.patient_id,
-    title: status === 'confirmed' ? 'Appointment approved' : 'Appointment cancelled',
+    title: status === 'confirmed'
+      ? 'Appointment approved'
+      : status === 'done'
+        ? 'Appointment completed'
+        : status === 'moved'
+          ? 'Appointment moved'
+          : 'Appointment cancelled',
     message: status === 'confirmed'
       ? `Your ${appointment.type || 'appointment'} appointment was approved.`
-      : `Your ${appointment.type || 'appointment'} appointment was cancelled. Reason: ${reason}`,
+      : status === 'done'
+        ? `Your ${appointment.type || 'appointment'} was marked completed.`
+        : status === 'moved'
+          ? `Your ${appointment.type || 'appointment'} was moved to ${new Date(newDate).toLocaleString()}.`
+          : `Your ${appointment.type || 'appointment'} appointment was cancelled. Reason: ${reason}`,
     type: 'appointment',
     section: 'appointments',
     target_id: appointmentId,
@@ -1139,7 +1210,7 @@ router.patch('/appointments/:id/status', verifyToken, requireRole('admin', 'doct
     to: appointment.profiles?.email,
     patientName: fullName(appointment.profiles),
     status,
-    appointment: { ...appointment, date: appointment.appointment_date },
+    appointment: { ...appointment, date: targetDate },
     reason,
   });
 

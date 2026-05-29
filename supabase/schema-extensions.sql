@@ -73,7 +73,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS uniq_confirmed_doctor_slot
 
 CREATE UNIQUE INDEX IF NOT EXISTS uniq_active_doctor_slot
   ON appointments(doctor_id, appointment_date)
-  WHERE doctor_id IS NOT NULL AND status IN ('pending', 'confirmed');
+  WHERE doctor_id IS NOT NULL AND status IN ('pending', 'confirmed', 'moved');
 
 CREATE TABLE IF NOT EXISTS waitlist (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
