@@ -1,4 +1,5 @@
 const express = require('express');
+const { normalizeRole, resolveUserRole, roleForRequest, syncProfileRoleForAuthUser } = require('../lib/profile');
 const { supabaseAdmin } = require('../lib/supabase');
 const { sendAdminCreatedAccountEmail, sendAppointmentEmail, sendAppointmentRequestEmail, sendPasswordChangeCodeEmail } = require('../lib/email');
 const {
@@ -34,6 +35,7 @@ const {
 } = require('../lib/localAuth');
 const { verifyToken } = require('../middleware/auth');
 const { requireRole } = require('../middleware/rbac');
+const { refreshCache, scheduleMatch, slotsForApi } = require('../lib/clinicSchedule');
 
 const router = express.Router();
 const pendingPasswordChanges = new Map();
@@ -74,8 +76,24 @@ function sectionForNotification(type) {
     document: 'records',
     feedback: 'feedback',
     message: 'messages',
+    emergency: 'messages',
     security: 'profile',
   }[type] || 'overview';
+}
+
+async function feedbackRowsWithNames(rows = []) {
+  const ids = [...new Set(rows.flatMap((item) => [item.patient_id, item.doctor_id]).filter(Boolean))];
+  if (!ids.length) return rows.map((item) => ({ ...item, patient_name: 'Unknown', doctor_name: null }));
+  const { data: profiles } = await supabaseAdmin
+    .from('profiles')
+    .select('id, first_name, last_name, email')
+    .in('id', ids);
+  const profileMap = new Map((profiles || []).map((profile) => [profile.id, fullName(profile)]));
+  return rows.map((item) => ({
+    ...item,
+    patient_name: profileMap.get(item.patient_id) || 'Unknown',
+    doctor_name: item.doctor_id ? profileMap.get(item.doctor_id) || null : null,
+  }));
 }
 
 function dateKey(value) {
@@ -84,15 +102,26 @@ function dateKey(value) {
   return parsed.toISOString().slice(0, 10);
 }
 
+function todayKey() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function isPastDateKey(value) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) && value < todayKey();
+}
+
 function publicProfile(user) {
+  const firstName = user.first_name || user.user_metadata?.first_name || 'User';
+  const lastName = user.last_name || user.user_metadata?.last_name || '';
+  const role = roleForRequest(user, user.email);
   return {
     id: user.id,
     email: user.email,
-    firstName: user.first_name,
-    middleName: user.middle_name,
-    lastName: user.last_name,
-    role: user.role,
-    phone: user.phone,
+    firstName,
+    middleName: user.middle_name || user.user_metadata?.middle_name || '',
+    lastName,
+    role,
+    phone: user.phone || user.user_metadata?.phone || '',
     twoFactor: user.two_factor_enabled,
     profilePhotoUrl: user.profile_photo_url,
     mustChangePassword: user.must_change_password,
@@ -145,7 +174,7 @@ router.get('/public/feedback', async (req, res) => {
   }
   const { data, error } = await supabaseAdmin
     .from('feedback')
-    .select('id, rating, comment, created_at, patient:profiles!feedback_patient_id_fkey(first_name, last_name), doctor:profiles!feedback_doctor_id_fkey(first_name, last_name)')
+    .select('id, patient_id, doctor_id, rating, comment, created_at')
     .eq('is_public', true)
     .eq('is_approved', true)
     .order('created_at', { ascending: false })
@@ -156,12 +185,13 @@ router.get('/public/feedback', async (req, res) => {
     }
     return res.status(500).json({ error: error.message });
   }
-  const feedback = (data || []).map((item) => ({
+  const rows = await feedbackRowsWithNames(data || []);
+  const feedback = rows.map((item) => ({
       id: item.id,
       rating: item.rating,
       comment: item.comment,
-      patientName: fullName(item.patient),
-      doctorName: item.doctor ? fullName(item.doctor) : null,
+      patientName: item.patient_name,
+      doctorName: item.doctor_name,
       createdAt: item.created_at,
     }));
   res.json({
@@ -170,8 +200,47 @@ router.get('/public/feedback', async (req, res) => {
   });
 });
 
-router.get('/me', verifyToken, (req, res) => {
+router.get('/me', verifyToken, async (req, res) => {
+  if (!req.user.isLocal && supabaseAdmin && req.user.id) {
+    const synced = await syncProfileRoleForAuthUser(supabaseAdmin, {
+      id: req.user.id,
+      email: req.user.email,
+    });
+    if (synced) {
+      req.user = { ...req.user, ...synced, role: roleForRequest(synced, req.user.email) };
+    }
+  }
+  req.user.role = roleForRequest(req.user, req.user.email);
   res.json({ user: publicProfile(req.user) });
+});
+
+router.get('/clinic/schedule', verifyToken, async (req, res) => {
+  const sched = await refreshCache(supabaseAdmin);
+  res.json({
+    schedule: slotsForApi(sched.slotsByDay),
+    services: sched.services || [],
+    source: sched.source,
+  });
+});
+
+router.get('/announcements', verifyToken, async (req, res) => {
+  if (!supabaseAdmin || req.user.isLocal) {
+    return res.json({ announcements: [], source: 'database' });
+  }
+  const now = new Date().toISOString();
+  const { data, error } = await supabaseAdmin
+    .from('announcements')
+    .select('id, title, body, priority, created_at, expires_at')
+    .or(`expires_at.is.null,expires_at.gt.${now}`)
+    .order('created_at', { ascending: false })
+    .limit(10);
+  if (error) {
+    if (/announcements|schema cache|does not exist/i.test(error.message)) {
+      return res.json({ announcements: [], source: 'database' });
+    }
+    return res.status(500).json({ error: error.message });
+  }
+  res.json({ announcements: data || [], source: 'database' });
 });
 
 router.post('/admin/accounts', verifyToken, requireRole('admin'), async (req, res) => {
@@ -287,10 +356,10 @@ router.post('/admin/accounts', verifyToken, requireRole('admin'), async (req, re
 });
 
 router.patch('/me', verifyToken, async (req, res) => {
-  const firstName = String(req.body?.firstName || '').trim();
-  const middleName = String(req.body?.middleName || '').trim();
-  const lastName = String(req.body?.lastName || '').trim();
-  const phone = String(req.body?.phone || '').trim();
+  const firstName = String(req.body?.firstName || req.user.first_name || req.user.user_metadata?.first_name || '').trim();
+  const middleName = String(req.body?.middleName || req.user.middle_name || req.user.user_metadata?.middle_name || '').trim();
+  const lastName = String(req.body?.lastName || req.user.last_name || req.user.user_metadata?.last_name || '').trim();
+  const phone = String(req.body?.phone || req.user.phone || req.user.user_metadata?.phone || '').trim();
   const profilePhotoUrl = String(req.body?.profilePhotoUrl || '').trim();
 
   if (firstName.length < 2 || lastName.length < 2) {
@@ -383,6 +452,7 @@ router.post('/me/password-change/request', verifyToken, async (req, res) => {
     title: 'Password change requested',
     message: 'Use the confirmation code sent to your email to finish changing your password.',
     type: 'security',
+    section: 'profile',
   });
   res.json({
     message: 'Check your email to finish changing your password.',
@@ -440,10 +510,23 @@ router.get('/me/login-history', verifyToken, async (req, res) => {
   res.json({ logins: data || [], source: 'database' });
 });
 
-router.get('/patients', verifyToken, requireRole('admin', 'doctor', 'nurse', 'staff'), async (req, res) => {
-  if (!supabaseAdmin || req.user.isLocal) {
-    return res.json({ patients: listLocalPatients(), source: 'local-database' });
+router.get('/patients', verifyToken, async (req, res) => {
+  const role = roleForRequest(req.user, req.user.email);
+  req.user.role = role;
+  if (!['admin', 'doctor', 'nurse', 'staff'].includes(role)) {
+    return res.status(403).json({ error: 'Insufficient permissions for this action.' });
   }
+
+  if (!supabaseAdmin || req.user.isLocal) {
+    const patients = listLocalPatients().map((p) => ({
+      ...p,
+      is_my_patient: req.user.role === 'doctor' && p.doctor === fullName(req.user),
+    }));
+    return res.json({ patients, source: 'local-database' });
+  }
+
+  const doctorId = req.user.role === 'doctor' ? req.user.id : null;
+  const doctorDisplayName = doctorId ? fullName(req.user) : null;
 
   const { data: patientRows, error } = await supabaseAdmin
     .from('patients')
@@ -464,24 +547,35 @@ router.get('/patients', verifyToken, requireRole('admin', 'doctor', 'nurse', 'st
 
   const { data: appointmentRows } = await supabaseAdmin
     .from('appointments')
-    .select('patient_id, doctor_name, appointment_date, created_at')
+    .select('patient_id, doctor_id, doctor_name, appointment_date, created_at, status')
     .order('appointment_date', { ascending: false })
     .limit(500);
 
+  const myPatientsByAppointment = new Set();
+  const latestProviderByPatient = new Map();
+  for (const appointment of appointmentRows || []) {
+    if (!appointment.patient_id) continue;
+    if (doctorId && appointment.doctor_id === doctorId) {
+      myPatientsByAppointment.add(appointment.patient_id);
+    }
+    if (!latestProviderByPatient.has(appointment.patient_id)) {
+      latestProviderByPatient.set(appointment.patient_id, {
+        doctor_name: appointment.doctor_name || null,
+        doctor_id: appointment.doctor_id || null,
+      });
+    }
+  }
+
   const { data: extendedPatientRows } = await supabaseAdmin
     .from('patients')
-    .select('id, room, trimester, provider:profiles!patients_provider_id_fkey(first_name, last_name, email)')
-    .limit(100);
+    .select('id, profile_id, room, trimester, provider_id, provider:profiles!patients_provider_id_fkey(id, first_name, last_name, email)')
+    .limit(500);
 
+  const extendedByProfileId = new Map();
   const extendedByPatientId = new Map();
   for (const row of extendedPatientRows || []) {
     extendedByPatientId.set(row.id, row);
-  }
-
-  const latestProviderByPatient = new Map();
-  for (const appointment of appointmentRows || []) {
-    if (!appointment.patient_id || latestProviderByPatient.has(appointment.patient_id)) continue;
-    latestProviderByPatient.set(appointment.patient_id, appointment.doctor_name || null);
+    if (row.profile_id) extendedByProfileId.set(row.profile_id, row);
   }
 
   const patientsByProfileId = new Map();
@@ -489,9 +583,21 @@ router.get('/patients', verifyToken, requireRole('admin', 'doctor', 'nurse', 'st
     if (row.profile_id) patientsByProfileId.set(row.profile_id, row);
   }
 
-  const merged = (profileRows || []).map((profile) => {
-    const patient = patientsByProfileId.get(profile.id);
-    const extended = patient ? extendedByPatientId.get(patient.id) : null;
+  function buildPatientRow(profile, patient, extended) {
+    const latest = latestProviderByPatient.get(profile.id);
+    const assignedDoctorId = extended?.provider_id || extended?.provider?.id || latest?.doctor_id || null;
+    const assignedDoctorName = extended?.provider
+      ? fullName(extended.provider)
+      : latest?.doctor_name || null;
+    const isMyPatient = Boolean(
+      doctorId
+      && (
+        extended?.provider_id === doctorId
+        || extended?.provider?.id === doctorId
+        || myPatientsByAppointment.has(profile.id)
+        || (assignedDoctorName && assignedDoctorName === doctorDisplayName)
+      )
+    );
     return {
       id: profile.id,
       profile_id: profile.id,
@@ -501,26 +607,30 @@ router.get('/patients', verifyToken, requireRole('admin', 'doctor', 'nurse', 'st
       status: patient?.status || 'outpatient',
       room: extended?.room || null,
       trimester: extended?.trimester || null,
-      doctor: extended?.provider ? fullName(extended.provider) : latestProviderByPatient.get(profile.id) || null,
+      doctor: assignedDoctorName,
+      assigned_doctor_id: assignedDoctorId,
+      is_my_patient: isMyPatient,
       admitted_at: patient?.admitted_at || null,
     };
+  }
+
+  const merged = (profileRows || []).map((profile) => {
+    const patient = patientsByProfileId.get(profile.id);
+    const extended = extendedByProfileId.get(profile.id) || (patient ? extendedByPatientId.get(patient.id) : null);
+    return buildPatientRow(profile, patient, extended);
   });
 
   for (const patient of patientRows || []) {
     if (patient.profile_id || !patient.profiles) continue;
     const extended = extendedByPatientId.get(patient.id);
-    merged.push({
-      id: patient.id,
-      profile_id: patient.profile_id || patient.id,
-      name: fullName(patient.profiles),
-      email: patient.profiles?.email,
-      phone: patient.profiles?.phone,
-      status: patient.status || 'outpatient',
-      room: extended?.room || null,
-      trimester: extended?.trimester || null,
-      doctor: extended?.provider ? fullName(extended.provider) : null,
-      admitted_at: patient.admitted_at,
-    });
+    const profile = {
+      id: patient.profile_id || patient.id,
+      first_name: patient.profiles.first_name,
+      last_name: patient.profiles.last_name,
+      email: patient.profiles.email,
+      phone: patient.profiles.phone,
+    };
+    merged.push(buildPatientRow(profile, patient, extended));
   }
 
   res.json({
@@ -540,8 +650,8 @@ router.get('/appointments', verifyToken, async (req, res) => {
 
   const { data, error } = await query.limit(100);
   if (error) {
-    if (/feedback|schema cache|does not exist/i.test(error.message)) {
-      return res.json({ feedback: [], source: 'database' });
+    if (/appointments|schema cache|does not exist/i.test(error.message)) {
+      return res.json({ appointments: [], source: 'database' });
     }
     return res.status(500).json({ error: error.message });
   }
@@ -580,7 +690,7 @@ router.get('/appointments/availability', verifyToken, async (req, res) => {
         && (!doctorId || appointment.doctor_id === doctorId)
         && ['pending', 'confirmed'].includes(appointment.status);
     });
-    return res.json({ appointments: rows, unavailableDays, source: 'local-database' });
+    return res.json({ appointments: rows, unavailableDays, closedDays: [], source: 'local-database' });
   }
 
   let query = supabaseAdmin
@@ -590,13 +700,19 @@ router.get('/appointments/availability', verifyToken, async (req, res) => {
     .lte('appointment_date', end.toISOString())
     .in('status', ['pending', 'confirmed']);
   if (doctorId) query = query.eq('doctor_id', doctorId);
-  const [{ data, error }, unavailableResult] = await Promise.all([
+  const [{ data, error }, unavailableResult, closedResult] = await Promise.all([
     query.limit(500),
     supabaseAdmin
       .from('doctor_unavailable_days')
       .select('doctor_id, unavailable_date')
       .gte('unavailable_date', start.toISOString().slice(0, 10))
       .lte('unavailable_date', end.toISOString().slice(0, 10))
+      .then((result) => result, () => ({ data: [], error: null })),
+    supabaseAdmin
+      .from('clinic_closed_days')
+      .select('closed_date, reason')
+      .gte('closed_date', start.toISOString().slice(0, 10))
+      .lte('closed_date', end.toISOString().slice(0, 10))
       .then((result) => result, () => ({ data: [], error: null })),
   ]);
   if (error) return res.status(500).json({ error: error.message });
@@ -610,14 +726,39 @@ router.get('/appointments/availability', verifyToken, async (req, res) => {
     unavailableDays: (unavailableResult.data || [])
       .filter((item) => !doctorId || item.doctor_id === doctorId)
       .map((item) => ({ doctor_id: item.doctor_id, date: item.unavailable_date })),
+    closedDays: (closedResult.data || []).map((item) => ({ date: item.closed_date, reason: item.reason })),
     source: 'database',
   });
+});
+
+router.patch('/clinic/closed-days', verifyToken, requireRole('admin'), async (req, res) => {
+  const date = String(req.body?.date || '').slice(0, 10);
+  const closed = req.body?.closed === true;
+  const reason = String(req.body?.reason || '').trim().slice(0, 180) || null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'Choose a valid calendar date.' });
+  if (isPastDateKey(date)) return res.status(400).json({ error: 'Past dates cannot be changed.' });
+  if (req.user.isLocal || !supabaseAdmin) return res.status(503).json({ error: 'Supabase is required to save clinic closed dates.' });
+
+  if (closed) {
+    const { data, error } = await supabaseAdmin
+      .from('clinic_closed_days')
+      .upsert({ closed_date: date, reason, created_by: req.user.id }, { onConflict: 'closed_date' })
+      .select()
+      .single();
+    if (error) return res.status(400).json({ error: error.message });
+    return res.json({ day: data, source: 'database' });
+  }
+
+  const { error } = await supabaseAdmin.from('clinic_closed_days').delete().eq('closed_date', date);
+  if (error) return res.status(400).json({ error: error.message });
+  res.json({ day: { date, closed: false }, source: 'database' });
 });
 
 router.patch('/doctor/unavailable-days', verifyToken, requireRole('doctor'), async (req, res) => {
   const date = String(req.body?.date || '').slice(0, 10);
   const unavailable = req.body?.unavailable === true;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return res.status(400).json({ error: 'Choose a valid calendar date.' });
+  if (isPastDateKey(date)) return res.status(400).json({ error: 'Past dates cannot be changed.' });
 
   if (req.user.isLocal || !supabaseAdmin) {
     const result = setLocalUnavailableDay(req.user, date, unavailable);
@@ -653,6 +794,10 @@ router.post('/appointments', verifyToken, async (req, res) => {
   if (!type || !date) return res.status(400).json({ error: 'Type and date are required.' });
   if (Number.isNaN(Date.parse(date))) return res.status(400).json({ error: 'Enter a valid appointment date.' });
   if (new Date(date) < new Date()) return res.status(400).json({ error: 'Appointment date must be in the future.' });
+  const sched = await refreshCache(supabaseAdmin);
+  if (!scheduleMatch(date, type, sched.slotsByDay)) {
+    return res.status(400).json({ error: 'Please choose a date and time from the clinic schedule.' });
+  }
 
   if (req.user.isLocal || !supabaseAdmin) {
     if (doctorId && listLocalUnavailableDays(doctorId).some((item) => item.date === dateKey(date))) {
@@ -676,6 +821,19 @@ router.post('/appointments', verifyToken, async (req, res) => {
   }
 
   const slot = normalizeSlot(date);
+  const closedResult = await supabaseAdmin
+    .from('clinic_closed_days')
+    .select('id, reason')
+    .eq('closed_date', dateKey(date))
+    .maybeSingle();
+  if (closedResult.data) {
+    return res.status(409).json({
+      error: closedResult.data.reason
+        ? `The clinic is closed on this date: ${closedResult.data.reason}`
+        : 'The clinic is closed on this date. Please choose another day.',
+      slotTaken: true,
+    });
+  }
   if (doctorId) {
     const unavailable = await supabaseAdmin
       .from('doctor_unavailable_days')
@@ -760,10 +918,88 @@ router.post('/appointments', verifyToken, async (req, res) => {
       user_id: userId,
       title: 'New appointment request',
       message: `${fullName(req.user)} requested ${type} on ${new Date(date).toLocaleString()}.`,
+      type: 'appointment',
+      section: 'appointments',
+      target_id: data.id,
     })));
   }
 
   res.status(201).json({ appointment: data, source: 'database' });
+});
+
+router.post('/emergency-alerts', verifyToken, requireRole('patient'), async (req, res) => {
+  if (req.user.isLocal || !supabaseAdmin) {
+    return res.status(503).json({ error: 'Supabase is required to send and store emergency alerts.' });
+  }
+
+  const message = String(req.body?.message || '').trim().slice(0, 500) || 'Patient reported an emergency or sudden labor/delivery.';
+  const { data: alert, error } = await supabaseAdmin
+    .from('emergency_alerts')
+    .insert({
+      patient_id: req.user.id,
+      message,
+      status: 'new',
+    })
+    .select()
+    .single();
+  if (error) return res.status(400).json({ error: error.message });
+
+  const { data: responders } = await supabaseAdmin
+    .from('profiles')
+    .select('id')
+    .in('role', ['admin', 'doctor', 'nurse'])
+    .eq('is_active', true);
+  const targets = (responders || []).map((item) => item.id);
+  if (targets.length) {
+    await supabaseAdmin.from('notifications').insert(targets.map((userId) => ({
+      user_id: userId,
+      title: 'Emergency patient alert',
+      message: `${fullName(req.user)} needs urgent clinic assistance.`,
+      type: 'emergency',
+      section: 'messages',
+      target_id: req.user.id,
+    })));
+  }
+
+  res.status(201).json({ alert, message: 'Emergency alert sent to the clinic team.', source: 'database' });
+});
+
+router.patch('/emergency-alerts/:id', verifyToken, requireRole('admin', 'doctor', 'nurse'), async (req, res) => {
+  const status = String(req.body?.status || 'acknowledged').trim();
+  if (!['acknowledged', 'resolved', 'new'].includes(status)) {
+    return res.status(400).json({ error: 'Status must be acknowledged, resolved, or new.' });
+  }
+  if (!supabaseAdmin) return res.status(503).json({ error: 'Database is required to update emergency alerts.' });
+
+  const { data, error } = await supabaseAdmin
+    .from('emergency_alerts')
+    .update({ status })
+    .eq('id', req.params.id)
+    .select()
+    .single();
+  if (error) return res.status(400).json({ error: error.message });
+  res.json({ alert: data, source: 'database' });
+});
+
+router.get('/emergency-alerts', verifyToken, requireRole('admin', 'doctor', 'nurse'), async (req, res) => {
+  if (!supabaseAdmin) return databaseUnavailable(res, { alerts: [] });
+  const { data, error } = await supabaseAdmin
+    .from('emergency_alerts')
+    .select('*, patient:profiles!emergency_alerts_patient_id_fkey(first_name, last_name, email, phone)')
+    .order('created_at', { ascending: false })
+    .limit(50);
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({
+    alerts: (data || []).map((item) => ({
+      id: item.id,
+      patient_name: fullName(item.patient),
+      phone: item.patient?.phone,
+      message: item.message,
+      status: item.status,
+      created_at: item.created_at,
+    })),
+    source: 'database',
+  });
 });
 
 router.get('/waitlist', verifyToken, async (req, res) => {
@@ -895,6 +1131,8 @@ router.patch('/appointments/:id/status', verifyToken, requireRole('admin', 'doct
       ? `Your ${appointment.type || 'appointment'} appointment was approved.`
       : `Your ${appointment.type || 'appointment'} appointment was cancelled. Reason: ${reason}`,
     type: 'appointment',
+    section: 'appointments',
+    target_id: appointmentId,
   });
 
   await sendAppointmentEmail({
@@ -956,7 +1194,7 @@ router.patch('/notifications/:id/read', verifyToken, async (req, res) => {
 });
 
 router.get('/patient/summary', verifyToken, async (req, res) => {
-  if (req.user.role !== 'patient') return res.status(403).json({ error: 'Patient summary is only available to patients.' });
+  if (req.user.role !== 'patient') return res.json({ pregnancy: null, tips: [], source: 'database' });
   if (!supabaseAdmin || req.user.isLocal) {
     return res.json({ pregnancy: null, tips: [], source: 'database' });
   }
@@ -971,9 +1209,19 @@ router.get('/patient/summary', verifyToken, async (req, res) => {
   if (error) return res.status(500).json({ error: error.message });
 
   const records = data || [];
+  const { data: tipRows } = await supabaseAdmin
+    .from('clinic_care_tips')
+    .select('tip_text')
+    .eq('is_active', true)
+    .order('sort_order', { ascending: true })
+    .limit(10)
+    .then((result) => result, () => ({ data: [] }));
+
+  const tips = (tipRows || []).map((row) => row.tip_text).filter(Boolean);
+
   const pregnancyRecord = records.find((record) => /pregnan|prenatal|trimester|gestation|due date/i.test(`${record.record_type} ${record.diagnosis} ${record.treatment}`));
   if (!pregnancyRecord) {
-    return res.json({ pregnancy: null, tips: [], source: 'database' });
+    return res.json({ pregnancy: null, tips, source: 'database' });
   }
 
   const text = `${pregnancyRecord.diagnosis || ''} ${pregnancyRecord.treatment || ''}`;
@@ -990,11 +1238,7 @@ router.get('/patient/summary', verifyToken, async (req, res) => {
       treatment: pregnancyRecord.treatment,
       lastUpdated: pregnancyRecord.created_at,
     },
-    tips: [
-      'Follow the care plan approved by your doctor.',
-      'Contact the clinic promptly for bleeding, severe headache, fever, or reduced fetal movement.',
-      'Bring previous lab results and medications to your next appointment.',
-    ],
+    tips,
     source: 'database',
   });
 });
@@ -1012,8 +1256,8 @@ router.get('/records', verifyToken, async (req, res) => {
 
   const { data, error } = await query.limit(100);
   if (error) {
-    if (/feedback|schema cache|does not exist/i.test(error.message)) {
-      return res.json({ feedback: [], source: 'database' });
+    if (/medical_records|schema cache|does not exist/i.test(error.message)) {
+      return res.json({ records: [], source: 'database' });
     }
     return res.status(500).json({ error: error.message });
   }
@@ -1034,7 +1278,13 @@ router.get('/records', verifyToken, async (req, res) => {
   });
 });
 
-router.post('/records', verifyToken, requireRole('doctor'), async (req, res) => {
+router.post('/records', verifyToken, async (req, res) => {
+  const role = roleForRequest(req.user, req.user.email);
+  req.user.role = role;
+  if (!['doctor', 'admin'].includes(role)) {
+    return res.status(403).json({ error: 'Insufficient permissions for this action.' });
+  }
+
   const patientId = String(req.body?.patientId || '').trim();
   const recordType = String(req.body?.recordType || 'Medical Result').trim();
   const diagnosis = String(req.body?.diagnosis || 'Medical Result').trim();
@@ -1081,6 +1331,8 @@ router.post('/records', verifyToken, requireRole('doctor'), async (req, res) => 
     title: 'New medical result',
     message: `${fullName(req.user)} added a medical result to your portal.`,
     type: 'document',
+    section: 'records',
+    target_id: data.id,
   });
   res.status(201).json({ record: data, source: 'database' });
 });
@@ -1110,7 +1362,7 @@ router.get('/lab', verifyToken, async (req, res) => {
   });
 });
 
-router.get('/staff', verifyToken, requireRole('admin', 'staff'), async (req, res) => {
+router.get('/staff', verifyToken, requireRole('admin', 'staff', 'doctor', 'nurse'), async (req, res) => {
   if (!supabaseAdmin || req.user.isLocal) return res.json({ staff: listLocalStaff(), source: 'local-database' });
 
   const { data, error } = await supabaseAdmin
@@ -1175,10 +1427,42 @@ router.get('/messages/contacts', verifyToken, async (req, res) => {
   if (!supabaseAdmin || req.user.isLocal) {
     return res.json({ contacts: listLocalUsersForMessages(req.user), source: 'local-database' });
   }
+
+  if (req.user.role === 'patient') {
+    const { data: bookedDoctors, error: bookedError } = await supabaseAdmin
+      .from('appointments')
+      .select('doctor_id')
+      .eq('patient_id', req.user.id)
+      .not('doctor_id', 'is', null)
+      .order('created_at', { ascending: false });
+    if (bookedError) return res.status(500).json({ error: bookedError.message });
+    const doctorIds = [...new Set((bookedDoctors || []).map((item) => item.doctor_id).filter(Boolean))];
+    if (!doctorIds.length) {
+      return res.json({ contacts: [], message: 'Doctors will appear here after you book an appointment with them.', source: 'database' });
+    }
+    const { data, error } = await supabaseAdmin
+      .from('profiles')
+      .select('id, first_name, last_name, email, role')
+      .in('id', doctorIds)
+      .eq('is_active', true)
+      .order('last_name', { ascending: true });
+    if (error) return res.status(500).json({ error: error.message });
+    return res.json({
+      contacts: (data || []).map((item) => ({
+        id: item.id,
+        name: fullName(item),
+        email: item.email,
+        role: item.role,
+      })),
+      source: 'database',
+    });
+  }
+
   const { data, error } = await supabaseAdmin
     .from('profiles')
     .select('id, first_name, last_name, email, role')
     .neq('id', req.user.id)
+    .in('role', ['admin', 'doctor', 'nurse', 'staff', 'patient'])
     .eq('is_active', true)
     .order('last_name', { ascending: true });
   if (error) return res.status(500).json({ error: error.message });
@@ -1258,19 +1542,25 @@ router.get('/medications', verifyToken, async (req, res) => {
 
   let query = supabaseAdmin
     .from('medications')
-    .select('*, patient:profiles!medications_patient_id_fkey(first_name, last_name, email)')
+    .select('*')
     .order('created_at', { ascending: false });
   if (req.user.role === 'patient') query = query.eq('patient_id', req.user.id);
 
   const { data, error } = await query.limit(100);
   if (error) return res.status(500).json({ error: error.message });
+  const ids = [...new Set((data || []).flatMap((item) => [item.patient_id, item.prescribed_by]).filter(Boolean))];
+  const { data: profiles } = ids.length
+    ? await supabaseAdmin.from('profiles').select('id, first_name, last_name, email').in('id', ids)
+    : { data: [] };
+  const profileMap = new Map((profiles || []).map((profile) => [profile.id, fullName(profile)]));
 
   res.json({
     medications: (data || []).map((m) => ({
       id: m.id,
       name: m.name,
       dosage: [m.dosage, m.frequency].filter(Boolean).join(', '),
-      patient_name: fullName(m.patient),
+      patient_name: profileMap.get(m.patient_id) || 'Unknown',
+      provider: profileMap.get(m.prescribed_by) || 'Doctor',
       status: m.status || 'active',
     })),
     ...empty(),
@@ -1283,16 +1573,22 @@ router.get('/feedback', verifyToken, async (req, res) => {
   }
   let query = supabaseAdmin
     .from('feedback')
-    .select('*, patient:profiles!feedback_patient_id_fkey(first_name, last_name, email), doctor:profiles!feedback_doctor_id_fkey(first_name, last_name, email)')
+    .select('*')
     .order('created_at', { ascending: false });
   if (req.user.role === 'patient') query = query.eq('patient_id', req.user.id);
   const { data, error } = await query.limit(100);
-  if (error) return res.status(500).json({ error: error.message });
+  if (error) {
+    if (/feedback|schema cache|does not exist/i.test(error.message)) {
+      return res.json({ feedback: [], source: 'database' });
+    }
+    return res.status(500).json({ error: error.message });
+  }
+  const rows = await feedbackRowsWithNames(data || []);
   res.json({
-    feedback: (data || []).map((item) => ({
+    feedback: rows.map((item) => ({
       id: item.id,
-      patient_name: fullName(item.patient),
-      doctor_name: item.doctor ? fullName(item.doctor) : null,
+      patient_name: item.patient_name,
+      doctor_name: item.doctor_name,
       rating: item.rating,
       comment: item.comment,
       is_public: item.is_public,
@@ -1329,6 +1625,22 @@ router.post('/feedback', verifyToken, requireRole('patient'), async (req, res) =
     .select()
     .single();
   if (error) return res.status(400).json({ error: error.message });
+  const { data: admins } = await supabaseAdmin
+    .from('profiles')
+    .select('id')
+    .eq('role', 'admin')
+    .eq('is_active', true);
+  const targets = (admins || []).map((admin) => admin.id);
+  if (targets.length) {
+    await supabaseAdmin.from('notifications').insert(targets.map((userId) => ({
+      user_id: userId,
+      title: 'New patient feedback',
+      message: `${fullName(req.user)} submitted clinic feedback.`,
+      type: 'feedback',
+      section: 'feedback',
+      target_id: data.id,
+    }))).then(() => null, () => null);
+  }
   res.status(201).json({ feedback: data, source: 'database' });
 });
 

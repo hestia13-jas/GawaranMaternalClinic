@@ -559,6 +559,7 @@
 
 .legend-dot.available { background: #16a34a; }
 .legend-dot.unavailable { background: #dc2626; }
+.legend-dot.past { background: #98a2b3; }
 
 .availability-day {
   min-height: 42px;
@@ -571,6 +572,16 @@
   cursor: pointer;
 }
 
+.availability-day small {
+  display: block;
+  margin-top: 0.1rem;
+  padding: 0 0.2rem;
+  font-size: 0.62rem;
+  font-weight: 600;
+  line-height: 1.15;
+  color: currentColor;
+}
+
 .availability-day.available {
   background: #ecfdf3;
   border-color: #86efac;
@@ -581,6 +592,14 @@
   background: #fef2f2;
   border-color: #fca5a5;
   color: #991b1b;
+  cursor: not-allowed;
+}
+
+.availability-day.past,
+.calendar-day.past {
+  background: #eef2f6;
+  border-color: #cbd5e1;
+  color: #667085;
   cursor: not-allowed;
 }
 
@@ -821,6 +840,285 @@
   background: #fff;
 }
 
+.settings-form input[type='range'] {
+  padding: 0;
+}
+
+.toggle-line {
+  display: flex !important;
+  grid-template-columns: none !important;
+  align-items: center;
+  gap: 0.55rem !important;
+}
+
+.toggle-line input {
+  width: 18px !important;
+  height: 18px;
+}
+
+.schedule-calendar-stack,
+.availability-months {
+  display: grid;
+  gap: 1rem;
+}
+
+.calendar-month-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 0.75rem;
+}
+
+.calendar-month-picker {
+  display: flex;
+  align-items: center;
+  margin: 0;
+}
+
+.calendar-month-input {
+  font: inherit;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid #d0d5dd;
+  border-radius: 8px;
+  background: #fff;
+  color: #182230;
+  min-height: 38px;
+}
+
+.calendar-month-label {
+  font-weight: 600;
+  color: #344054;
+  font-size: 0.95rem;
+}
+
+.calendar-month-hint {
+  flex: 1 1 100%;
+  margin: 0;
+  font-size: 0.82rem;
+  color: #667085;
+}
+
+.form-hint {
+  margin: 0 0 0.75rem;
+  font-size: 0.88rem;
+  color: #667085;
+}
+
+.clinic-close-form {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.patient-picker-toolbar {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.patient-picker-search,
+.patient-picker-filter {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  font-size: 0.85rem;
+  color: #344054;
+}
+
+.patient-picker-search input,
+.patient-picker-filter select {
+  width: 100%;
+  min-height: 40px;
+}
+
+.patient-picker-table-wrap {
+  max-height: 320px;
+  overflow: auto;
+  margin-bottom: 1rem;
+  border: 1px solid #e4e7ec;
+  border-radius: 8px;
+}
+
+.patient-pick-row {
+  cursor: pointer;
+}
+
+.patient-pick-row:hover,
+.patient-pick-row.selected {
+  background: #ecfdf3;
+}
+
+.patient-pick-row.selected td {
+  box-shadow: inset 3px 0 0 #0f766e;
+}
+
+.patient-selected-note {
+  margin: 0 0 0.75rem;
+  font-size: 0.9rem;
+  color: #667085;
+}
+
+.patient-selected-note.success {
+  color: #067647;
+  font-weight: 600;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.emergency-fab {
+  position: fixed;
+  right: 1.25rem;
+  bottom: 1.25rem;
+  z-index: 40;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 48px;
+  padding: 0.75rem 1rem;
+  border: 0;
+  border-radius: 8px;
+  background: #b42318;
+  color: #fff;
+  font: inherit;
+  font-weight: 800;
+  box-shadow: 0 12px 26px rgba(180, 35, 24, 0.26);
+  cursor: pointer;
+}
+
+.emergency-fab:hover {
+  background: #912018;
+}
+
+.theme-dark .portal-app,
+.theme-dark .portal-content,
+.theme-dark {
+  background: #111827;
+  color: #e5e7eb;
+}
+
+.theme-dark .portal-sidebar,
+.theme-dark .portal-topbar,
+.theme-dark .panel,
+.theme-dark .stat-card,
+.theme-dark .portal-user,
+.theme-dark .notification-menu,
+.theme-dark .notification-item,
+.theme-dark .calendar-event,
+.theme-dark .availability-calendar,
+.theme-dark .settings-form input,
+.theme-dark .settings-form textarea,
+.theme-dark .settings-form select,
+.theme-dark .professional-form input,
+.theme-dark .professional-form textarea,
+.theme-dark .professional-form select,
+.theme-dark .btn-outline {
+  background: #1f2937;
+  border-color: #374151;
+  color: #e5e7eb;
+}
+
+.theme-dark .portal-brand,
+.theme-dark .portal-user-name,
+.theme-dark .portal-topbar h1,
+.theme-dark .panel-head h2,
+.theme-dark .stat-card-value,
+.theme-dark .calendar-month-input,
+.theme-dark .calendar-month-label,
+.theme-dark .calendar-month-hint,
+.theme-dark .form-hint {
+  color: #d0d5dd;
+}
+
+.theme-dark .calendar-month-input {
+  background: #1f2937;
+  border-color: #374151;
+  color: #f9fafb;
+}
+
+.theme-dark .calendar-month-title,
+.theme-dark .availability-title,
+.theme-dark .calendar-date,
+.theme-dark .availability-day,
+.theme-dark .readonly-line strong {
+  color: #f9fafb;
+}
+
+.theme-dark .portal-topbar p,
+.theme-dark .portal-topbar-meta,
+.theme-dark .source-note,
+.theme-dark .settings-form label,
+.theme-dark .calendar-date span,
+.theme-dark .availability-weekdays span,
+.theme-dark .readonly-line span,
+.theme-dark .notification-item span,
+.theme-dark .notification-item small {
+  color: #cbd5e1;
+}
+
+.theme-dark .portal-nav button.nav-btn {
+  color: #cbd5e1;
+}
+
+.theme-dark .portal-nav button.nav-btn:hover,
+.theme-dark .portal-nav button.nav-btn.active,
+.theme-dark .notification-item.unread,
+.theme-dark .calendar-day.has-events {
+  background: #134e4a;
+  border-color: #0f766e;
+  color: #f0fdfa;
+}
+
+.theme-dark .calendar-day,
+.theme-dark .availability-day {
+  background: #172033;
+  border-color: #374151;
+}
+
+.theme-dark .calendar-day.unavailable,
+.theme-dark .availability-day.unavailable {
+  background: #3b1d1d;
+  border-color: #7f1d1d;
+  color: #fecaca;
+}
+
+.announcement-list {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.announcement-item {
+  padding: 0.85rem 1rem;
+  border-radius: 10px;
+  border: 1px solid var(--border, #e2e8f0);
+  background: #f8fafc;
+}
+
+.announcement-item.priority-high {
+  border-color: #f59e0b;
+  background: #fffbeb;
+}
+
+.emergency-panel .table-actions {
+  white-space: nowrap;
+}
+
+.theme-dark .availability-day.available {
+  background: #103a2b;
+  border-color: #15803d;
+  color: #bbf7d0;
+}
+
 .profile-photo-preview {
   width: 84px;
   height: 84px;
@@ -963,6 +1261,17 @@
 .confirm-modal p {
   color: #667085;
   font-size: 0.9rem;
+}
+
+.emergency-modal textarea {
+  width: 100%;
+  min-height: 110px;
+  resize: vertical;
+  margin-top: 0.85rem;
+  border: 1px solid #c3ccd8;
+  border-radius: 6px;
+  padding: 0.75rem 0.85rem;
+  font: inherit;
 }
 
 .confirm-actions {

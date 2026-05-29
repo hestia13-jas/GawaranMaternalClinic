@@ -129,6 +129,29 @@ CREATE TABLE doctor_unavailable_days (
   UNIQUE (doctor_id, unavailable_date)
 );
 
+CREATE TABLE clinic_closed_days (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  closed_date DATE NOT NULL UNIQUE,
+  reason TEXT,
+  created_by UUID REFERENCES profiles(id),
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE user_preferences (
+  user_id UUID PRIMARY KEY REFERENCES profiles(id) ON DELETE CASCADE,
+  theme TEXT NOT NULL DEFAULT 'light' CHECK (theme IN ('light', 'dark')),
+  font_size INT NOT NULL DEFAULT 100 CHECK (font_size BETWEEN 90 AND 120),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE emergency_alerts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  patient_id UUID REFERENCES profiles(id) NOT NULL,
+  message TEXT,
+  status TEXT DEFAULT 'new',
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
 CREATE TABLE patient_statistics (
   id SERIAL PRIMARY KEY,
   month TEXT NOT NULL,
@@ -145,21 +168,44 @@ CREATE TABLE staff_performance (
 );
 
 -- Auto-create profile on signup (optional; server also inserts)
-CREATE OR REPLACE FUNCTION handle_new_user()
-RETURNS TRIGGER AS $$
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
 BEGIN
-  INSERT INTO profiles (id, email, first_name, last_name, role)
+  PERFORM set_config('row_security', 'off', true);
+
+  INSERT INTO public.profiles (id, email, first_name, middle_name, last_name, phone, role, is_active, is_locked)
   VALUES (
     NEW.id,
     NEW.email,
-    COALESCE(NEW.raw_user_meta_data->>'first_name', 'User'),
-    COALESCE(NEW.raw_user_meta_data->>'last_name', ''),
-    'patient'
+    COALESCE(NULLIF(NEW.raw_user_meta_data->>'first_name', ''), 'User'),
+    NULLIF(NEW.raw_user_meta_data->>'middle_name', ''),
+    COALESCE(NULLIF(NEW.raw_user_meta_data->>'last_name', ''), 'Patient'),
+    NULLIF(NEW.raw_user_meta_data->>'phone', ''),
+    'patient'::public.user_role,
+    true,
+    false
   )
-  ON CONFLICT (id) DO NOTHING;
+  ON CONFLICT (id) DO UPDATE SET
+    email = EXCLUDED.email,
+    first_name = EXCLUDED.first_name,
+    middle_name = EXCLUDED.middle_name,
+    last_name = EXCLUDED.last_name,
+    phone = EXCLUDED.phone,
+    updated_at = now();
+
   RETURN NEW;
+EXCEPTION
+  WHEN others THEN
+    RAISE WARNING 'handle_new_user profile insert skipped for %: %', NEW.email, SQLERRM;
+    RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$;
+
+ALTER FUNCTION public.handle_new_user() OWNER TO postgres;
 
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
@@ -175,6 +221,11 @@ ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users read own profile"
   ON profiles FOR SELECT
   USING (auth.uid() = id);
+
+CREATE POLICY "Users insert own profile"
+  ON profiles FOR INSERT
+  TO authenticated
+  WITH CHECK (auth.uid() = id);
 
 CREATE POLICY "Users update own profile"
   ON profiles FOR UPDATE
@@ -212,4 +263,4 @@ INSERT INTO staff_performance (name, score) VALUES
   ('Nurse Cruz', 88);
 
 -- Create first admin (replace UUID after creating user in Auth dashboard):
--- UPDATE profiles SET role = 'admin' WHERE email = 'admin@gawaranclinic.ph';
+-- UPDATE profiles SET role = 'admin' WHERE email = 'admin@clinicgawaran.ph';

@@ -1,3 +1,5 @@
+const { normalizeRole, roleForRequest } = require('../lib/profile');
+
 const ROLE_HIERARCHY = {
   admin: ['admin', 'doctor', 'nurse', 'staff', 'patient'],
   doctor: ['doctor', 'patient'],
@@ -20,17 +22,23 @@ function canAccess(actorRole, targetRole) {
 }
 
 function getDashboardPath(role) {
-  return DASHBOARD_BY_ROLE[role] || '/dashboard/patient';
+  return DASHBOARD_BY_ROLE[role] || '/portal.html';
+}
+
+function effectiveRole(user) {
+  return roleForRequest(user, user?.email);
 }
 
 function requireRole(...roles) {
+  const allowed = new Set(roles.map((role) => normalizeRole(role)).filter(Boolean));
   return (req, res, next) => {
-    const userRole = req.user?.role;
-    if (!userRole || !roles.includes(userRole)) {
+    const userRole = effectiveRole(req.user);
+    req.user.role = userRole;
+    if (!allowed.has(userRole)) {
       return res.status(403).json({ error: 'Insufficient permissions for this action.' });
     }
     next();
   };
 }
 
-module.exports = { canAccess, getDashboardPath, requireRole, DASHBOARD_BY_ROLE };
+module.exports = { canAccess, getDashboardPath, requireRole, effectiveRole, DASHBOARD_BY_ROLE };

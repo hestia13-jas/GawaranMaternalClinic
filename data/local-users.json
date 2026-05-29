@@ -34,7 +34,7 @@
     },
     {
       "id": "ad3de971-b3e8-4727-8682-08188047e2f0",
-      "email": "admin@gawaranclinic.ph",
+      "email": "admin@clinicgawaran.ph",
       "passwordHash": {
         "salt": "8d336fa46ee0ea0e8780db7c2d551ef8",
         "hash": "603d388465dcbe325c13e488df06430b433c66174671a5ca93746254b8f17030"
@@ -51,7 +51,7 @@
     },
     {
       "id": "c5105350-c893-4443-bba6-108b28a92d7f",
-      "email": "doctor@gawaranclinic.ph",
+      "email": "doctor@clinicgawaran.ph",
       "passwordHash": {
         "salt": "6a20c7fe39c1e961912fd9a7cb227110",
         "hash": "f13ef34e9ba42d347cf8e1403794f29f34abfc9dd5f3422c7e7586388991ff7a"
@@ -68,7 +68,7 @@
     },
     {
       "id": "1cd17581-f8e1-4867-9e1c-9b9a3b290554",
-      "email": "nurse@gawaranclinic.ph",
+      "email": "nurse@clinicgawaran.ph",
       "passwordHash": {
         "salt": "56adec6688c1f7f2d74acd7144c97822",
         "hash": "21c6f57f0e1132c57abe7cbbd958fca679ee9bfd2d48ec20ccd347cc114eee5e"
@@ -85,7 +85,7 @@
     },
     {
       "id": "b0a611ac-531b-446f-96b0-4b95054b652b",
-      "email": "staff@gawaranclinic.ph",
+      "email": "staff@clinicgawaran.ph",
       "passwordHash": {
         "salt": "c83616b141c0e102f5e758e1b6daa25a",
         "hash": "12bc285ad986312a93d7c0afbca13337d8b352b0466a3d649f2d19caea3a9bff"
@@ -102,7 +102,7 @@
     },
     {
       "id": "10826e18-82fb-4524-bd20-8e979d1f74f7",
-      "email": "patient@gawaranclinic.ph",
+      "email": "patient@clinicgawaran.ph",
       "passwordHash": {
         "salt": "153baa9c4cab991e90143a022afa6b29",
         "hash": "45b95ef21a5da25fcf498e1c7171955978d8c75971329aa676939c53dcd5f2a6"
@@ -217,7 +217,7 @@
     },
     {
       "id": "7b118cc8-27ed-4e85-a1e6-1414528abebd",
-      "email": "doctor.lopez@gawaranclinic.ph",
+      "email": "doctor.lopez@clinicgawaran.ph",
       "passwordHash": {
         "salt": "6a20c7fe39c1e961912fd9a7cb227110",
         "hash": "f13ef34e9ba42d347cf8e1403794f29f34abfc9dd5f3422c7e7586388991ff7a"
@@ -237,7 +237,7 @@
     },
     {
       "id": "f9e8a7ab-e537-4c9a-9aee-4a38d756706e",
-      "email": "doctor.reyes@gawaranclinic.ph",
+      "email": "doctor.reyes@clinicgawaran.ph",
       "passwordHash": {
         "salt": "6a20c7fe39c1e961912fd9a7cb227110",
         "hash": "f13ef34e9ba42d347cf8e1403794f29f34abfc9dd5f3422c7e7586388991ff7a"
@@ -257,7 +257,7 @@
     },
     {
       "id": "040354c8-1025-43a9-a946-8d9aa3896757",
-      "email": "doctor.cruz@gawaranclinic.ph",
+      "email": "doctor.cruz@clinicgawaran.ph",
       "passwordHash": {
         "salt": "6a20c7fe39c1e961912fd9a7cb227110",
         "hash": "f13ef34e9ba42d347cf8e1403794f29f34abfc9dd5f3422c7e7586388991ff7a"
@@ -277,7 +277,7 @@
     },
     {
       "id": "defbb6bd-4bc2-423e-b451-d1090d3a2c90",
-      "email": "doctor.gawaran@gawaranclinic.ph",
+      "email": "doctor.gawaran@clinicgawaran.ph",
       "passwordHash": {
         "salt": "6a20c7fe39c1e961912fd9a7cb227110",
         "hash": "f13ef34e9ba42d347cf8e1403794f29f34abfc9dd5f3422c7e7586388991ff7a"
@@ -297,7 +297,7 @@
     },
     {
       "id": "4db11605-0be4-400d-8037-69fe2b164453",
-      "email": "doctor.villanueva@gawaranclinic.ph",
+      "email": "doctor.villanueva@clinicgawaran.ph",
       "passwordHash": {
         "salt": "6a20c7fe39c1e961912fd9a7cb227110",
         "hash": "f13ef34e9ba42d347cf8e1403794f29f34abfc9dd5f3422c7e7586388991ff7a"
@@ -317,7 +317,7 @@
     },
     {
       "id": "1ad395cb-b6ba-488c-82a1-750537250a63",
-      "email": "doctor.ramos@gawaranclinic.ph",
+      "email": "doctor.ramos@clinicgawaran.ph",
       "passwordHash": {
         "salt": "6a20c7fe39c1e961912fd9a7cb227110",
         "hash": "f13ef34e9ba42d347cf8e1403794f29f34abfc9dd5f3422c7e7586388991ff7a"
@@ -334,118 +334,54 @@
       "must_change_password": false,
       "temporary_password_expires_at": null,
       "profile_photo_url": null
+    },
+    {
+      "id": "409e0207-4255-4222-a311-40cb6aaa2b8f",
+      "email": "jasmine.villafuerte@cvsu.edu.ph",
+      "passwordHash": {
+        "salt": "7c6945262abd6d66da4a136e97eff0c8",
+        "hash": "b895f7ad3df79084713c0a799536189055d5a34967c6e57dae01af4474b7588d"
+      },
+      "first_name": "Jasmine",
+      "middle_name": "Aguilar",
+      "last_name": "Villafuerte",
+      "phone": "09515251883",
+      "role": "patient",
+      "is_locked": false,
+      "two_factor_enabled": false,
+      "must_change_password": false,
+      "temporary_password_expires_at": null,
+      "created_at": "2026-05-28T15:35:11.936Z"
+    },
+    {
+      "id": "4af7f290-a0aa-464c-bbcc-4cafe2d47335",
+      "email": "montabonabigael@gmail.com",
+      "passwordHash": {
+        "salt": "6272bd704fa4f883d0954641f3e9394c",
+        "hash": "baa84aadef418671f52d077adeff59d217d1efba2e1d425166da7c7aac13a5a2"
+      },
+      "first_name": "Abigael",
+      "middle_name": null,
+      "last_name": "Montabon",
+      "phone": "09515251883",
+      "role": "patient",
+      "is_locked": false,
+      "two_factor_enabled": false,
+      "must_change_password": false,
+      "temporary_password_expires_at": null,
+      "created_at": "2026-05-28T16:33:18.246Z"
     }
   ],
   "sessions": [
     {
-      "token": "gVcpodcXTiqmC4d2zk7OZ74Skv3eDpn9b9GJjvZrxvA",
-      "user_id": "10826e18-82fb-4524-bd20-8e979d1f74f7",
-      "expires_at": 1779994335909
-    },
-    {
-      "token": "6fLocaMOz5d3vx93z77YdQbDxVuPlACNXXD66tALAu8",
+      "token": "hwu25wcNek-4cL2mkGK0-t4jS5w0MwrwqHKpAwSU6UQ",
       "user_id": "c5105350-c893-4443-bba6-108b28a92d7f",
-      "expires_at": 1779994720981
+      "expires_at": 1780082182839
     },
     {
-      "token": "Co_TA-xJ0uZ9dflSC-krncCfj651tKUu-hI4QYUHk7Y",
-      "user_id": "10826e18-82fb-4524-bd20-8e979d1f74f7",
-      "expires_at": 1779996007415
-    },
-    {
-      "token": "yr4DKIh1hU9NF0BxbE7joqBOU9_xAw3yx29XDIv0QWA",
-      "user_id": "ad3de971-b3e8-4727-8682-08188047e2f0",
-      "expires_at": 1779996049588
-    },
-    {
-      "token": "ltaX9p6Bc9zr2aLF-I0WSxzwOKv_JJWJtOBAhh71J88",
+      "token": "fJzMGcrL4UdVCMrBev9Sar3FGnyvK5E70bZ_m6FQXok",
       "user_id": "c5105350-c893-4443-bba6-108b28a92d7f",
-      "expires_at": 1779996110451
-    },
-    {
-      "token": "fuSigGAFbbhJv3WamyWOPNlJkxPQCzBMacH90JsBzBY",
-      "user_id": "c5105350-c893-4443-bba6-108b28a92d7f",
-      "expires_at": 1779996612139
-    },
-    {
-      "token": "fezX5yGmr6WguP_pmKM6owcdOIldEluaXZvlDlo0yv4",
-      "user_id": "c5105350-c893-4443-bba6-108b28a92d7f",
-      "expires_at": 1779996645502
-    },
-    {
-      "token": "Wcd9Fsuvbo2soE-HeXH6-3SDewJC5trhPWczUB18q8c",
-      "user_id": "c5105350-c893-4443-bba6-108b28a92d7f",
-      "expires_at": 1779996661850
-    },
-    {
-      "token": "FUW0mBaO9bxtXlP-dOFTsRU5d97yW8adqNhunWzLLzo",
-      "user_id": "c5105350-c893-4443-bba6-108b28a92d7f",
-      "expires_at": 1779996677802
-    },
-    {
-      "token": "lNdxa6QVq_kWQRpssrHz0ioNq1iyaWnz3tpD71QbLBY",
-      "user_id": "10826e18-82fb-4524-bd20-8e979d1f74f7",
-      "expires_at": 1779996678217
-    },
-    {
-      "token": "yX3bpnLTIRze8VWDDq4GVsio_YOi2-LBgZ9-AtdyKYY",
-      "user_id": "c5105350-c893-4443-bba6-108b28a92d7f",
-      "expires_at": 1779996792213
-    },
-    {
-      "token": "2yJfJf1xmTX3pD_f2TxcWaGhWI9KhOL_EfNmEB6rIlw",
-      "user_id": "c5105350-c893-4443-bba6-108b28a92d7f",
-      "expires_at": 1779997894777
-    },
-    {
-      "token": "WMOjuZcNGWov-OVy-T82bNhysb7GBxII2OHeEwHz2wk",
-      "user_id": "10826e18-82fb-4524-bd20-8e979d1f74f7",
-      "expires_at": 1779998632151
-    },
-    {
-      "token": "XA0cjnOIb6VYZQf9iOD6qYt09ung15V-012ea_6NApU",
-      "user_id": "10826e18-82fb-4524-bd20-8e979d1f74f7",
-      "expires_at": 1779998667120
-    },
-    {
-      "token": "r3rz3OMQWNAOmwBnWWjfeB7xRvOd7OOGPHYmBdE_aOQ",
-      "user_id": "10826e18-82fb-4524-bd20-8e979d1f74f7",
-      "expires_at": 1779998784663
-    },
-    {
-      "token": "KH-XRuYc7GwSjjIA0dTGlkdMhnjQlAf5DsYbazAtQzQ",
-      "user_id": "10826e18-82fb-4524-bd20-8e979d1f74f7",
-      "expires_at": 1779998875621
-    },
-    {
-      "token": "b28NHLuRL9zHOKoC0x6_FTUfPl04xHYMnvIsENNP7uU",
-      "user_id": "10826e18-82fb-4524-bd20-8e979d1f74f7",
-      "expires_at": 1779999519163
-    },
-    {
-      "token": "cPZbOtpF-lkztyhiQVhM2hpUQMgR57cFMr_CmClE6S0",
-      "user_id": "ad3de971-b3e8-4727-8682-08188047e2f0",
-      "expires_at": 1779999529123
-    },
-    {
-      "token": "YK0kia6_QwWeb0SJxuMdG02i_Ph7TNUKyGtif1ouVxM",
-      "user_id": "10826e18-82fb-4524-bd20-8e979d1f74f7",
-      "expires_at": 1780012650552
-    },
-    {
-      "token": "nC6pmQxRwq6Zb2kYeSnrItHud50BvhtokyV3JDFPYIc",
-      "user_id": "c5105350-c893-4443-bba6-108b28a92d7f",
-      "expires_at": 1780012748471
-    },
-    {
-      "token": "ZcN6_5fra245IpXevkJ3dsAoTqLsrrWb4obdQxXmZNc",
-      "user_id": "ad3de971-b3e8-4727-8682-08188047e2f0",
-      "expires_at": 1780016409630
-    },
-    {
-      "token": "D4HB2P2wTIJQ05v6TOw9_ozBH9Yc12alvlGQaGAxetA",
-      "user_id": "10826e18-82fb-4524-bd20-8e979d1f74f7",
-      "expires_at": 1780017583335
+      "expires_at": 1780082208714
     }
   ],
   "appointments": [
@@ -453,7 +389,7 @@
       "id": "demo-jane-appt-ultrasound",
       "patient_id": "10826e18-82fb-4524-bd20-8e979d1f74f7",
       "patient_name": "Jane Dela Cruz",
-      "patient_email": "patient@gawaranclinic.ph",
+      "patient_email": "patient@clinicgawaran.ph",
       "type": "Ultrasound & Monitoring",
       "date": "2026-06-03T13:00",
       "notes": "Follow-up ultrasound for fetal growth and placenta position review.",
@@ -469,7 +405,7 @@
       "id": "demo-jane-appt-prenatal",
       "patient_id": "10826e18-82fb-4524-bd20-8e979d1f74f7",
       "patient_name": "Jane Dela Cruz",
-      "patient_email": "patient@gawaranclinic.ph",
+      "patient_email": "patient@clinicgawaran.ph",
       "type": "Prenatal Care",
       "date": "2026-05-29T08:00",
       "notes": "Defense demo: routine prenatal checkup with blood pressure and fetal heartbeat monitoring.",
@@ -513,7 +449,7 @@
       "id": "7869cfb4-e7ad-46d8-a6f9-e9c43fadbdc6",
       "patient_id": "10826e18-82fb-4524-bd20-8e979d1f74f7",
       "patient_name": "Jane Dela Cruz",
-      "patient_email": "patient@gawaranclinic.ph",
+      "patient_email": "patient@clinicgawaran.ph",
       "type": "Ultrasound",
       "date": "2026-05-28T11:49",
       "notes": "Sample Booking, Test 1",
@@ -527,6 +463,127 @@
     }
   ],
   "notifications": [
+    {
+      "id": "bb8495e7-df39-4c8c-b311-36663c465cf3",
+      "user_id": "c5105350-c893-4443-bba6-108b28a92d7f",
+      "title": "New message from Jane Dela Cruz",
+      "message": "san si francis??",
+      "type": "message",
+      "section": "messages",
+      "target_id": "10826e18-82fb-4524-bd20-8e979d1f74f7",
+      "is_read": true,
+      "created_at": "2026-05-28T16:38:22.790Z"
+    },
+    {
+      "id": "295c7628-d3a6-4c2c-a04f-07621f239eb2",
+      "user_id": "10826e18-82fb-4524-bd20-8e979d1f74f7",
+      "title": "New message from Maria Santos",
+      "message": "hi beh",
+      "type": "message",
+      "section": "messages",
+      "target_id": "c5105350-c893-4443-bba6-108b28a92d7f",
+      "is_read": true,
+      "created_at": "2026-05-28T16:37:59.903Z"
+    },
+    {
+      "id": "6684efcc-5fef-4995-9d84-53e4310e11b4",
+      "user_id": "4af7f290-a0aa-464c-bbcc-4cafe2d47335",
+      "title": "Password change code generated",
+      "message": "Use the confirmation code sent to your email to finish changing your password.",
+      "type": "security",
+      "section": "profile",
+      "target_id": null,
+      "is_read": false,
+      "created_at": "2026-05-28T16:33:57.044Z"
+    },
+    {
+      "id": "49456f7d-a03b-437b-840f-4b6cbb35645f",
+      "user_id": "4af7f290-a0aa-464c-bbcc-4cafe2d47335",
+      "title": "Password change code generated",
+      "message": "Use the confirmation code sent to your email to finish changing your password.",
+      "type": "security",
+      "section": "profile",
+      "target_id": null,
+      "is_read": false,
+      "created_at": "2026-05-28T16:33:55.487Z"
+    },
+    {
+      "id": "6c31a0c3-4b06-474b-b97d-1ad27358e42b",
+      "user_id": "4af7f290-a0aa-464c-bbcc-4cafe2d47335",
+      "title": "Password change code generated",
+      "message": "Use the confirmation code sent to your email to finish changing your password.",
+      "type": "security",
+      "section": "profile",
+      "target_id": null,
+      "is_read": false,
+      "created_at": "2026-05-28T16:33:54.714Z"
+    },
+    {
+      "id": "bfca6b78-7e9c-4cbe-b752-dfbd1d6dffae",
+      "user_id": "4af7f290-a0aa-464c-bbcc-4cafe2d47335",
+      "title": "Password change code generated",
+      "message": "Use the confirmation code sent to your email to finish changing your password.",
+      "type": "security",
+      "section": "profile",
+      "target_id": null,
+      "is_read": false,
+      "created_at": "2026-05-28T16:33:54.268Z"
+    },
+    {
+      "id": "7ec1e4b8-6193-45c3-b908-b03a2c99ec44",
+      "user_id": "4af7f290-a0aa-464c-bbcc-4cafe2d47335",
+      "title": "Password change code generated",
+      "message": "Use the confirmation code sent to your email to finish changing your password.",
+      "type": "security",
+      "section": "profile",
+      "target_id": null,
+      "is_read": false,
+      "created_at": "2026-05-28T16:33:53.876Z"
+    },
+    {
+      "id": "98763873-b831-471f-9bdf-44b90495329e",
+      "user_id": "4af7f290-a0aa-464c-bbcc-4cafe2d47335",
+      "title": "Password change code generated",
+      "message": "Use the confirmation code sent to your email to finish changing your password.",
+      "type": "security",
+      "section": "profile",
+      "target_id": null,
+      "is_read": false,
+      "created_at": "2026-05-28T16:33:53.634Z"
+    },
+    {
+      "id": "c8c3d810-2507-495a-92bc-9fb0f92c4917",
+      "user_id": "4af7f290-a0aa-464c-bbcc-4cafe2d47335",
+      "title": "Password change code generated",
+      "message": "Use the confirmation code sent to your email to finish changing your password.",
+      "type": "security",
+      "section": "profile",
+      "target_id": null,
+      "is_read": false,
+      "created_at": "2026-05-28T16:33:53.369Z"
+    },
+    {
+      "id": "bf9465bd-5f8c-4f98-a681-d8953eee2c47",
+      "user_id": "4af7f290-a0aa-464c-bbcc-4cafe2d47335",
+      "title": "Password change code generated",
+      "message": "Use the confirmation code sent to your email to finish changing your password.",
+      "type": "security",
+      "section": "profile",
+      "target_id": null,
+      "is_read": false,
+      "created_at": "2026-05-28T16:33:52.026Z"
+    },
+    {
+      "id": "dfbb95db-11ec-475c-bc4e-5eaff56fcead",
+      "user_id": "4af7f290-a0aa-464c-bbcc-4cafe2d47335",
+      "title": "Password change code generated",
+      "message": "Use the confirmation code sent to your email to finish changing your password.",
+      "type": "security",
+      "section": "profile",
+      "target_id": null,
+      "is_read": false,
+      "created_at": "2026-05-28T16:33:51.292Z"
+    },
     {
       "id": "demo-jane-note-appt",
       "user_id": "10826e18-82fb-4524-bd20-8e979d1f74f7",
@@ -817,9 +874,54 @@
   "waitlist": [],
   "loginHistory": [
     {
+      "id": "e041fa27-44c2-4110-8fe8-dbc0172a15ba",
+      "user_id": "c5105350-c893-4443-bba6-108b28a92d7f",
+      "email": "doctor@clinicgawaran.ph",
+      "success": true,
+      "ip_address": "::1",
+      "device": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0",
+      "created_at": "2026-05-28T16:37:39.500Z"
+    },
+    {
+      "id": "5726e917-2b3c-45a3-9b24-05a772f3faf2",
+      "user_id": "10826e18-82fb-4524-bd20-8e979d1f74f7",
+      "email": "patient@clinicgawaran.ph",
+      "success": true,
+      "ip_address": "::1",
+      "device": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0",
+      "created_at": "2026-05-28T16:36:45.546Z"
+    },
+    {
+      "id": "9058083a-0715-4407-bcb3-b65e41e6df1c",
+      "user_id": "4af7f290-a0aa-464c-bbcc-4cafe2d47335",
+      "email": "montabonabigael@gmail.com",
+      "success": true,
+      "ip_address": "::1",
+      "device": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0",
+      "created_at": "2026-05-28T16:33:26.973Z"
+    },
+    {
+      "id": "e498ca17-0bbc-4d42-b833-2c27f9121609",
+      "user_id": "c5105350-c893-4443-bba6-108b28a92d7f",
+      "email": "doctor@clinicgawaran.ph",
+      "success": true,
+      "ip_address": "::1",
+      "device": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0",
+      "created_at": "2026-05-28T16:31:32.046Z"
+    },
+    {
+      "id": "765c7948-be63-4692-802f-092d6339145d",
+      "user_id": "409e0207-4255-4222-a311-40cb6aaa2b8f",
+      "email": "jasmine.villafuerte@cvsu.edu.ph",
+      "success": true,
+      "ip_address": "::1",
+      "device": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0",
+      "created_at": "2026-05-28T15:35:20.514Z"
+    },
+    {
       "id": "faf2f274-3ff2-4565-882f-673fb606d5de",
       "user_id": "10826e18-82fb-4524-bd20-8e979d1f74f7",
-      "email": "patient@gawaranclinic.ph",
+      "email": "patient@clinicgawaran.ph",
       "success": true,
       "ip_address": "::1",
       "device": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0",
@@ -828,7 +930,7 @@
     {
       "id": "cc8b7b21-b00d-4dbc-85f9-f4b7b6c83b61",
       "user_id": "ad3de971-b3e8-4727-8682-08188047e2f0",
-      "email": "admin@gawaranclinic.ph",
+      "email": "admin@clinicgawaran.ph",
       "success": true,
       "ip_address": "::1",
       "device": "Mozilla/5.0 (Windows NT; Windows NT 10.0; en-PH) WindowsPowerShell/5.1.26100.8457",
@@ -837,7 +939,7 @@
     {
       "id": "16eba8dd-408a-4647-9256-da640f2438ba",
       "user_id": "c5105350-c893-4443-bba6-108b28a92d7f",
-      "email": "doctor@gawaranclinic.ph",
+      "email": "doctor@clinicgawaran.ph",
       "success": true,
       "ip_address": "::1",
       "device": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0",
@@ -846,7 +948,7 @@
     {
       "id": "3f5623a2-c377-4065-a3d8-9bdc6e328082",
       "user_id": "10826e18-82fb-4524-bd20-8e979d1f74f7",
-      "email": "patient@gawaranclinic.ph",
+      "email": "patient@clinicgawaran.ph",
       "success": true,
       "ip_address": "::1",
       "device": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0",
@@ -855,7 +957,7 @@
     {
       "id": "a293b620-477b-48fd-85f1-c0203e068dc3",
       "user_id": "ad3de971-b3e8-4727-8682-08188047e2f0",
-      "email": "admin@gawaranclinic.ph",
+      "email": "admin@clinicgawaran.ph",
       "success": true,
       "ip_address": "::1",
       "device": "node",
@@ -864,7 +966,7 @@
     {
       "id": "a4085058-f9e5-4c83-9e8d-5a8ea7f2af3a",
       "user_id": "10826e18-82fb-4524-bd20-8e979d1f74f7",
-      "email": "patient@gawaranclinic.ph",
+      "email": "patient@clinicgawaran.ph",
       "success": true,
       "ip_address": "::1",
       "device": "node",
@@ -873,7 +975,7 @@
     {
       "id": "cbe8ff46-b314-4688-a027-04b257ba6ab3",
       "user_id": "10826e18-82fb-4524-bd20-8e979d1f74f7",
-      "email": "patient@gawaranclinic.ph",
+      "email": "patient@clinicgawaran.ph",
       "success": true,
       "ip_address": "::1",
       "device": "Mozilla/5.0 (Windows NT; Windows NT 10.0; en-PH) WindowsPowerShell/5.1.26100.8457",
@@ -882,7 +984,7 @@
     {
       "id": "46bd59b0-42bf-4cb1-b8cb-66cadb6e64f7",
       "user_id": "10826e18-82fb-4524-bd20-8e979d1f74f7",
-      "email": "patient@gawaranclinic.ph",
+      "email": "patient@clinicgawaran.ph",
       "success": true,
       "ip_address": "::1",
       "device": "Mozilla/5.0 (Windows NT; Windows NT 10.0; en-PH) WindowsPowerShell/5.1.26100.8457",
@@ -891,7 +993,7 @@
     {
       "id": "056ac672-506a-4744-8918-9386ef0be1d1",
       "user_id": "10826e18-82fb-4524-bd20-8e979d1f74f7",
-      "email": "patient@gawaranclinic.ph",
+      "email": "patient@clinicgawaran.ph",
       "success": true,
       "ip_address": "::1",
       "device": "Mozilla/5.0 (Windows NT; Windows NT 10.0; en-PH) WindowsPowerShell/5.1.26100.8457",
@@ -900,7 +1002,7 @@
     {
       "id": "c6f6f826-aa80-4f59-b649-66f832a0840e",
       "user_id": "10826e18-82fb-4524-bd20-8e979d1f74f7",
-      "email": "patient@gawaranclinic.ph",
+      "email": "patient@clinicgawaran.ph",
       "success": true,
       "ip_address": "::1",
       "device": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0",
@@ -909,7 +1011,7 @@
     {
       "id": "96033174-e293-49e6-86f9-6f10d49a8f3a",
       "user_id": "c5105350-c893-4443-bba6-108b28a92d7f",
-      "email": "doctor@gawaranclinic.ph",
+      "email": "doctor@clinicgawaran.ph",
       "success": true,
       "ip_address": "::1",
       "device": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0",
@@ -918,7 +1020,7 @@
     {
       "id": "434dafd4-714e-4706-a0b8-1273442cd8c7",
       "user_id": "c5105350-c893-4443-bba6-108b28a92d7f",
-      "email": "doctor@gawaranclinic.ph",
+      "email": "doctor@clinicgawaran.ph",
       "success": true,
       "ip_address": "::1",
       "device": "Mozilla/5.0 (Windows NT; Windows NT 10.0; en-PH) WindowsPowerShell/5.1.26100.8457",
@@ -927,7 +1029,7 @@
     {
       "id": "2ba616ed-acf8-4140-b257-73b69b15e421",
       "user_id": "10826e18-82fb-4524-bd20-8e979d1f74f7",
-      "email": "patient@gawaranclinic.ph",
+      "email": "patient@clinicgawaran.ph",
       "success": true,
       "ip_address": "::1",
       "device": "Mozilla/5.0 (Windows NT; Windows NT 10.0; en-PH) WindowsPowerShell/5.1.26100.8457",
@@ -936,7 +1038,7 @@
     {
       "id": "74c588f1-7906-403a-bcbd-9702aa51d511",
       "user_id": "c5105350-c893-4443-bba6-108b28a92d7f",
-      "email": "doctor@gawaranclinic.ph",
+      "email": "doctor@clinicgawaran.ph",
       "success": true,
       "ip_address": "::1",
       "device": "Mozilla/5.0 (Windows NT; Windows NT 10.0; en-PH) WindowsPowerShell/5.1.26100.8457",
@@ -945,7 +1047,7 @@
     {
       "id": "d9db0818-d023-4255-adf7-a47719312823",
       "user_id": "c5105350-c893-4443-bba6-108b28a92d7f",
-      "email": "doctor@gawaranclinic.ph",
+      "email": "doctor@clinicgawaran.ph",
       "success": true,
       "ip_address": "::1",
       "device": "Mozilla/5.0 (Windows NT; Windows NT 10.0; en-PH) WindowsPowerShell/5.1.26100.8457",
@@ -954,7 +1056,7 @@
     {
       "id": "7b644167-a3f3-4a35-9440-934b1dbcbfee",
       "user_id": "c5105350-c893-4443-bba6-108b28a92d7f",
-      "email": "doctor@gawaranclinic.ph",
+      "email": "doctor@clinicgawaran.ph",
       "success": true,
       "ip_address": "::1",
       "device": "Mozilla/5.0 (Windows NT; Windows NT 10.0; en-PH) WindowsPowerShell/5.1.26100.8457",
@@ -963,7 +1065,7 @@
     {
       "id": "12239492-e9b3-4dcd-b0c0-e328136a46dd",
       "user_id": "c5105350-c893-4443-bba6-108b28a92d7f",
-      "email": "doctor@gawaranclinic.ph",
+      "email": "doctor@clinicgawaran.ph",
       "success": true,
       "ip_address": "::1",
       "device": "Mozilla/5.0 (Windows NT; Windows NT 10.0; en-PH) WindowsPowerShell/5.1.26100.8457",
@@ -972,7 +1074,7 @@
     {
       "id": "42da5f70-da42-4649-8694-73598d662280",
       "user_id": "c5105350-c893-4443-bba6-108b28a92d7f",
-      "email": "doctor@gawaranclinic.ph",
+      "email": "doctor@clinicgawaran.ph",
       "success": true,
       "ip_address": "::1",
       "device": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Codex/26.519.81530 Chrome/148.0.7778.97 Electron/42.1.0 Safari/537.36",
@@ -981,7 +1083,7 @@
     {
       "id": "37beb695-a9a5-4670-8bb2-111a86b39c0c",
       "user_id": "ad3de971-b3e8-4727-8682-08188047e2f0",
-      "email": "admin@gawaranclinic.ph",
+      "email": "admin@clinicgawaran.ph",
       "success": true,
       "ip_address": "::1",
       "device": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0",
@@ -990,7 +1092,7 @@
     {
       "id": "c2b4436e-c4f0-48a4-82a9-4d2cfa476cfe",
       "user_id": "10826e18-82fb-4524-bd20-8e979d1f74f7",
-      "email": "patient@gawaranclinic.ph",
+      "email": "patient@clinicgawaran.ph",
       "success": true,
       "ip_address": "::1",
       "device": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Codex/26.519.81530 Chrome/148.0.7778.97 Electron/42.1.0 Safari/537.36",
@@ -999,7 +1101,7 @@
     {
       "id": "b9c94077-9779-4314-a78b-e6b84dbd6c6b",
       "user_id": "c5105350-c893-4443-bba6-108b28a92d7f",
-      "email": "doctor@gawaranclinic.ph",
+      "email": "doctor@clinicgawaran.ph",
       "success": true,
       "ip_address": "::1",
       "device": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0",
@@ -1008,7 +1110,7 @@
     {
       "id": "7f87a1f5-1969-4576-bd28-a37abd2dd435",
       "user_id": "10826e18-82fb-4524-bd20-8e979d1f74f7",
-      "email": "patient@gawaranclinic.ph",
+      "email": "patient@clinicgawaran.ph",
       "success": true,
       "ip_address": "::1",
       "device": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0",
@@ -1017,7 +1119,7 @@
     {
       "id": "578858a5-596a-4270-988e-ce449d67af4d",
       "user_id": "ad3de971-b3e8-4727-8682-08188047e2f0",
-      "email": "admin@gawaranclinic.ph",
+      "email": "admin@clinicgawaran.ph",
       "success": true,
       "ip_address": "::1",
       "device": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0",
@@ -1026,7 +1128,7 @@
     {
       "id": "b43a5a98-5feb-4265-86f0-a00dae72425a",
       "user_id": "c5105350-c893-4443-bba6-108b28a92d7f",
-      "email": "doctor@gawaranclinic.ph",
+      "email": "doctor@clinicgawaran.ph",
       "success": true,
       "ip_address": "::1",
       "device": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0",
@@ -1035,7 +1137,7 @@
     {
       "id": "1435f345-d2f0-4eac-bb7e-e5dc7a928d9d",
       "user_id": "10826e18-82fb-4524-bd20-8e979d1f74f7",
-      "email": "patient@gawaranclinic.ph",
+      "email": "patient@clinicgawaran.ph",
       "success": true,
       "ip_address": "::1",
       "device": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0",
@@ -1044,7 +1146,7 @@
     {
       "id": "f759742c-3521-4c8a-839b-8cdfa4b19287",
       "user_id": "ad3de971-b3e8-4727-8682-08188047e2f0",
-      "email": "admin@gawaranclinic.ph",
+      "email": "admin@clinicgawaran.ph",
       "success": true,
       "ip_address": "::1",
       "device": "Mozilla/5.0 (Windows NT; Windows NT 10.0; en-PH) WindowsPowerShell/5.1.26100.8457",
@@ -1053,7 +1155,7 @@
     {
       "id": "a5c7df30-3fb9-4f45-b184-5c443b6df142",
       "user_id": "ad3de971-b3e8-4727-8682-08188047e2f0",
-      "email": "admin@gawaranclinic.ph",
+      "email": "admin@clinicgawaran.ph",
       "success": true,
       "ip_address": "::1",
       "device": "Mozilla/5.0 (Windows NT; Windows NT 10.0; en-PH) WindowsPowerShell/5.1.26100.8457",
@@ -1062,7 +1164,7 @@
     {
       "id": "5c5d95b1-4f34-4b2b-aa85-6d1cb0d85b8a",
       "user_id": "ad3de971-b3e8-4727-8682-08188047e2f0",
-      "email": "admin@gawaranclinic.ph",
+      "email": "admin@clinicgawaran.ph",
       "success": true,
       "ip_address": "::1",
       "device": "Mozilla/5.0 (Windows NT; Windows NT 10.0; en-PH) WindowsPowerShell/5.1.26100.8457",
@@ -1071,7 +1173,7 @@
     {
       "id": "68a4f45f-3664-4bd5-8944-d8d302f2a205",
       "user_id": "ad3de971-b3e8-4727-8682-08188047e2f0",
-      "email": "admin@gawaranclinic.ph",
+      "email": "admin@clinicgawaran.ph",
       "success": true,
       "ip_address": "::1",
       "device": "Mozilla/5.0 (Windows NT; Windows NT 10.0; en-PH) WindowsPowerShell/5.1.26100.8457",
@@ -1080,7 +1182,7 @@
     {
       "id": "51099c54-5427-4ed7-b96d-c6509e8763b8",
       "user_id": "ad3de971-b3e8-4727-8682-08188047e2f0",
-      "email": "admin@gawaranclinic.ph",
+      "email": "admin@clinicgawaran.ph",
       "success": true,
       "ip_address": "::1",
       "device": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0",
@@ -1098,7 +1200,7 @@
     {
       "id": "1b48a790-0759-46f9-b301-29e620349299",
       "user_id": "10826e18-82fb-4524-bd20-8e979d1f74f7",
-      "email": "patient@gawaranclinic.ph",
+      "email": "patient@clinicgawaran.ph",
       "success": true,
       "ip_address": "::1",
       "device": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Codex/26.519.41501 Chrome/148.0.7778.97 Electron/42.1.0 Safari/537.36",
@@ -1116,7 +1218,7 @@
     {
       "id": "6aec7b91-5428-4ecd-97f4-448633fa5676",
       "user_id": "c5105350-c893-4443-bba6-108b28a92d7f",
-      "email": "doctor@gawaranclinic.ph",
+      "email": "doctor@clinicgawaran.ph",
       "success": true,
       "ip_address": "::1",
       "device": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/148.0.0.0 Safari/537.36 Edg/148.0.0.0",
@@ -1125,7 +1227,7 @@
     {
       "id": "7fda1584-5f88-438b-bb27-9250bb151416",
       "user_id": "10826e18-82fb-4524-bd20-8e979d1f74f7",
-      "email": "patient@gawaranclinic.ph",
+      "email": "patient@clinicgawaran.ph",
       "success": true,
       "ip_address": "::1",
       "device": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Codex/26.519.41501 Chrome/148.0.7778.97 Electron/42.1.0 Safari/537.36",
@@ -1134,7 +1236,7 @@
     {
       "id": "b3ef0d8f-98c6-4c2c-8ec0-63635eb1f566",
       "user_id": "10826e18-82fb-4524-bd20-8e979d1f74f7",
-      "email": "patient@gawaranclinic.ph",
+      "email": "patient@clinicgawaran.ph",
       "success": true,
       "ip_address": "::1",
       "device": "Mozilla/5.0 (Windows NT; Windows NT 10.0; en-PH) WindowsPowerShell/5.1.26100.8457",
@@ -1143,7 +1245,7 @@
     {
       "id": "51d73a7e-b52b-441c-885a-9cc35a7f0f4a",
       "user_id": "b0a611ac-531b-446f-96b0-4b95054b652b",
-      "email": "staff@gawaranclinic.ph",
+      "email": "staff@clinicgawaran.ph",
       "success": true,
       "ip_address": "::1",
       "device": "Mozilla/5.0 (Windows NT; Windows NT 10.0; en-PH) WindowsPowerShell/5.1.26100.8457",
@@ -1152,7 +1254,7 @@
     {
       "id": "066a922a-69c7-4ff6-bdc4-5b16c63b3622",
       "user_id": "1cd17581-f8e1-4867-9e1c-9b9a3b290554",
-      "email": "nurse@gawaranclinic.ph",
+      "email": "nurse@clinicgawaran.ph",
       "success": true,
       "ip_address": "::1",
       "device": "Mozilla/5.0 (Windows NT; Windows NT 10.0; en-PH) WindowsPowerShell/5.1.26100.8457",
@@ -1161,7 +1263,7 @@
     {
       "id": "704f63a2-3e53-4003-a471-bc027657415c",
       "user_id": "c5105350-c893-4443-bba6-108b28a92d7f",
-      "email": "doctor@gawaranclinic.ph",
+      "email": "doctor@clinicgawaran.ph",
       "success": true,
       "ip_address": "::1",
       "device": "Mozilla/5.0 (Windows NT; Windows NT 10.0; en-PH) WindowsPowerShell/5.1.26100.8457",
@@ -1170,7 +1272,7 @@
     {
       "id": "7dfc24ff-2db0-4b7f-9dd3-e23cc33e8cd6",
       "user_id": "ad3de971-b3e8-4727-8682-08188047e2f0",
-      "email": "admin@gawaranclinic.ph",
+      "email": "admin@clinicgawaran.ph",
       "success": true,
       "ip_address": "::1",
       "device": "Mozilla/5.0 (Windows NT; Windows NT 10.0; en-PH) WindowsPowerShell/5.1.26100.8457",
@@ -1179,7 +1281,7 @@
     {
       "id": "3a01e903-c25c-4a51-8e80-f6b9307f9920",
       "user_id": "10826e18-82fb-4524-bd20-8e979d1f74f7",
-      "email": "patient@gawaranclinic.ph",
+      "email": "patient@clinicgawaran.ph",
       "success": true,
       "ip_address": "::1",
       "device": "Mozilla/5.0 (Windows NT; Windows NT 10.0; en-PH) WindowsPowerShell/5.1.26100.8457",
@@ -1188,7 +1290,7 @@
     {
       "id": "9ff0e466-1f5d-4d69-a793-0537e4c93101",
       "user_id": "b0a611ac-531b-446f-96b0-4b95054b652b",
-      "email": "staff@gawaranclinic.ph",
+      "email": "staff@clinicgawaran.ph",
       "success": true,
       "ip_address": "::1",
       "device": "Mozilla/5.0 (Windows NT; Windows NT 10.0; en-PH) WindowsPowerShell/5.1.26100.8457",
@@ -1197,7 +1299,7 @@
     {
       "id": "6b385647-d8fc-4e03-b77d-c62c068af0f7",
       "user_id": "1cd17581-f8e1-4867-9e1c-9b9a3b290554",
-      "email": "nurse@gawaranclinic.ph",
+      "email": "nurse@clinicgawaran.ph",
       "success": true,
       "ip_address": "::1",
       "device": "Mozilla/5.0 (Windows NT; Windows NT 10.0; en-PH) WindowsPowerShell/5.1.26100.8457",
@@ -1206,7 +1308,7 @@
     {
       "id": "5d0d0f76-7a27-438d-9b05-fc37f3d57115",
       "user_id": "c5105350-c893-4443-bba6-108b28a92d7f",
-      "email": "doctor@gawaranclinic.ph",
+      "email": "doctor@clinicgawaran.ph",
       "success": true,
       "ip_address": "::1",
       "device": "Mozilla/5.0 (Windows NT; Windows NT 10.0; en-PH) WindowsPowerShell/5.1.26100.8457",
@@ -1215,7 +1317,7 @@
     {
       "id": "e7c0fa74-b6f6-41de-81e7-3e16d28c236d",
       "user_id": "ad3de971-b3e8-4727-8682-08188047e2f0",
-      "email": "admin@gawaranclinic.ph",
+      "email": "admin@clinicgawaran.ph",
       "success": true,
       "ip_address": "::1",
       "device": "Mozilla/5.0 (Windows NT; Windows NT 10.0; en-PH) WindowsPowerShell/5.1.26100.8457",
@@ -1379,6 +1481,28 @@
       "body": "Thank you doctor. I will review the records and attend my May 29 appointment.",
       "is_read": false,
       "created_at": "2026-05-28T03:48:00.000Z"
+    },
+    {
+      "id": "c3a5dfb2-6e81-475d-8c8d-ac376eac45c2",
+      "sender_id": "c5105350-c893-4443-bba6-108b28a92d7f",
+      "recipient_id": "10826e18-82fb-4524-bd20-8e979d1f74f7",
+      "sender_name": "Maria Santos",
+      "recipient_name": "Jane Dela Cruz",
+      "subject": "Message",
+      "body": "hi beh",
+      "is_read": false,
+      "created_at": "2026-05-28T16:37:59.903Z"
+    },
+    {
+      "id": "b3e0cc12-32de-4847-ad3c-10496b19bb22",
+      "sender_id": "10826e18-82fb-4524-bd20-8e979d1f74f7",
+      "recipient_id": "c5105350-c893-4443-bba6-108b28a92d7f",
+      "sender_name": "Jane Dela Cruz",
+      "recipient_name": "Maria Santos",
+      "subject": "Message",
+      "body": "san si francis??",
+      "is_read": false,
+      "created_at": "2026-05-28T16:38:22.790Z"
     }
   ],
   "unavailableDays": [
@@ -1388,6 +1512,13 @@
       "doctor_name": "Maria Santos",
       "date": "2026-05-19",
       "created_at": "2026-05-28T11:59:37.565Z"
+    },
+    {
+      "id": "474f5b96-3746-459a-ab7e-d39747cc2406",
+      "doctor_id": "c5105350-c893-4443-bba6-108b28a92d7f",
+      "doctor_name": "Maria Santos",
+      "date": "2026-05-13",
+      "created_at": "2026-05-28T16:46:08.882Z"
     }
   ]
 }

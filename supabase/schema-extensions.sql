@@ -125,8 +125,33 @@ CREATE TABLE IF NOT EXISTS doctor_unavailable_days (
   UNIQUE (doctor_id, unavailable_date)
 );
 
+CREATE TABLE IF NOT EXISTS clinic_closed_days (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  closed_date DATE NOT NULL UNIQUE,
+  reason TEXT,
+  created_by UUID REFERENCES profiles(id),
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS user_preferences (
+  user_id UUID PRIMARY KEY REFERENCES profiles(id) ON DELETE CASCADE,
+  theme TEXT NOT NULL DEFAULT 'light' CHECK (theme IN ('light', 'dark')),
+  font_size INT NOT NULL DEFAULT 100 CHECK (font_size BETWEEN 90 AND 120),
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS emergency_alerts (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  patient_id UUID REFERENCES profiles(id) NOT NULL,
+  message TEXT,
+  status TEXT DEFAULT 'new',
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
 CREATE INDEX IF NOT EXISTS idx_appointments_date ON appointments(appointment_date);
 CREATE INDEX IF NOT EXISTS idx_waitlist_slot ON waitlist(doctor_id, appointment_time);
 CREATE INDEX IF NOT EXISTS idx_feedback_public ON feedback(is_public, is_approved, created_at);
 CREATE INDEX IF NOT EXISTS idx_messages_recipient ON messages(recipient_id);
 CREATE INDEX IF NOT EXISTS idx_unavailable_days_doctor_date ON doctor_unavailable_days(doctor_id, unavailable_date);
+CREATE INDEX IF NOT EXISTS idx_clinic_closed_days_date ON clinic_closed_days(closed_date);
+CREATE INDEX IF NOT EXISTS idx_emergency_alerts_patient_date ON emergency_alerts(patient_id, created_at);

@@ -19,6 +19,7 @@
   --shadow: 0 8px 20px rgba(15, 23, 42, 0.06);
   --radius: 8px;
   --font: 'DM Sans', system-ui, sans-serif;
+  --portal-font-scale: 100%;
 }
 
 *,
@@ -35,6 +36,7 @@ html {
 
 body {
   font-family: var(--font);
+  font-size: var(--portal-font-scale);
   color: var(--gray-900);
   background: #f6f8fb;
   line-height: 1.6;
@@ -1006,4 +1008,170 @@ img {
   .sidebar-nav li {
     margin: 0;
   }
+}
+/* ─── Patient combobox / autocomplete dropdown ───────────────────────────────
+   Add these rules to portal.css (or paste at the bottom of main.css).
+   ──────────────────────────────────────────────────────────────────────────── */
+
+/* Wrapper – positions the dropdown relative to the input */
+.patient-combobox {
+  position: relative;
+  width: 100%;
+}
+
+/* Input + chevron row */
+.patient-combobox-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.patient-combobox-input {
+  width: 100%;
+  padding: 0.55rem 2.25rem 0.55rem 0.75rem; /* right padding for chevron */
+  border: 1.5px solid var(--gray-300, #d1d5db);
+  border-radius: 0.5rem;
+  font-size: 0.9375rem;
+  color: var(--gray-900, #111827);
+  background: var(--white, #fff);
+  outline: none;
+  transition: border-color 0.15s;
+  box-sizing: border-box;
+}
+
+.patient-combobox-input:focus {
+  border-color: var(--purple-600, #7c3aed);
+  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.12);
+}
+
+.patient-combobox-chevron {
+  position: absolute;
+  right: 0.65rem;
+  font-size: 0.75rem;
+  color: var(--gray-400, #9ca3af);
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Floating dropdown list */
+.patient-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 200;
+  background: var(--white, #fff);
+  border: 1.5px solid var(--gray-200, #e5e7eb);
+  border-radius: 0.5rem;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+  max-height: 260px;
+  overflow-y: auto;
+  list-style: none;
+  margin: 0;
+  padding: 0.25rem 0;
+  scroll-behavior: smooth;
+}
+
+/* Individual patient row */
+.patient-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.875rem;
+  cursor: pointer;
+  outline: none;
+  transition: background 0.1s;
+}
+
+.patient-dropdown-item:hover,
+.patient-dropdown-item:focus {
+  background: var(--purple-50, #f5f3ff);
+}
+
+.patient-dropdown-item.is-mine {
+  background: linear-gradient(90deg, var(--purple-50, #f5f3ff) 0%, transparent 100%);
+}
+
+.patient-dropdown-item.is-mine:hover,
+.patient-dropdown-item.is-mine:focus {
+  background: var(--purple-100, #ede9fe);
+}
+
+.pdrop-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--gray-900, #111827);
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pdrop-sub {
+  font-size: 0.8125rem;
+  color: var(--gray-500, #6b7280);
+  margin-left: auto;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.pdrop-mine {
+  font-size: 0.72rem;
+  font-style: normal;
+  color: var(--purple-600, #7c3aed);
+  background: var(--purple-100, #ede9fe);
+  border-radius: 0.3rem;
+  padding: 0.1rem 0.4rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Empty state inside dropdown */
+.patient-dropdown-empty {
+  padding: 0.75rem 0.875rem;
+  font-size: 0.875rem;
+  color: var(--gray-400, #9ca3af);
+  text-align: center;
+}
+
+/* Selected patient chip row (shown after selection) */
+.patient-selected-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.patient-selected-chip {
+  background: var(--purple-100, #ede9fe);
+  color: var(--purple-700, #6d28d9);
+  border-radius: 0.4rem;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.patient-clear-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--gray-400, #9ca3af);
+  line-height: 1;
+  padding: 0.15rem 0.35rem;
+  border-radius: 0.25rem;
+  transition: color 0.15s, background 0.15s;
+  flex-shrink: 0;
+}
+
+.patient-clear-btn:hover {
+  color: var(--red-600, #dc2626);
+  background: var(--red-50, #fef2f2);
 }

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login | Gawaran Maternal Clinic</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/css/main.css" />
+  <link rel="icon" href="/assets/logo.jpg" type="image/jpeg" />
+</head>
+<body class="auth-page">
+  <div class="auth-card">
+    <div class="auth-header">
+      <img src="/assets/logo.jpg" alt="" class="brand-mini" width="64" height="64" />
+      <h1>Sign In</h1>
+      <p>Access your Gawaran Maternal Clinic portal</p>
+    </div>
+
+    <div id="formError" class="form-error" role="alert"></div>
+
+    <form id="loginForm" novalidate>
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" autocomplete="email" required />
+        <div class="form-warning" id="emailWarning">Please enter a valid email address.</div>
+      </div>
+
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" autocomplete="current-password" required />
+        <div class="form-warning" id="passwordWarning">Password is required.</div>
+      </div>
+
+      <div class="form-check">
+        <input type="checkbox" id="rememberDevice" name="rememberDevice" />
+        <label for="rememberDevice">Remember this device</label>
+      </div>
+
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Sign In</button>
+      </div>
+
+      <p style="text-align:center;margin-top:1rem;font-size:0.875rem;">
+        <a href="/forgot-password.html">Forgot Password?</a>
+      </p>
+    </form>
+
+    <div id="formSuccess" class="form-success" role="status"></div>
+
+    <div id="otpSection" class="otp-section">
+      <p id="otpHint" style="font-size:0.9rem;margin-bottom:1rem;color:var(--gray-500);">Two-factor verification: enter the 6-digit code sent to your email.</p>
+      <div class="form-group">
+        <label for="otpCode">Verification Code</label>
+        <input type="text" id="otpCode" maxlength="6" pattern="[0-9]{6}" inputmode="numeric" />
+        <div class="form-warning" id="otpWarning">Enter a valid 6-digit code.</div>
+      </div>
+      <button type="button" class="btn btn-primary" id="verifyOtpBtn" style="width:100%;">Verify Code</button>
+      <p style="text-align:center;margin-top:1rem;font-size:0.875rem;">
+        <button type="button" id="resendOtpBtn" style="background:none;border:none;color:var(--purple-600);cursor:pointer;font:inherit;">Resend code</button>
+      </p>
+    </div>
+
+    <div class="form-footer">
+      Don't have an account? <a href="/signup.html">Create Account</a><br />
+      <a href="/" style="margin-top:0.5rem;display:inline-block;">← Back to Home</a>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="/js/config.js"></script>
+  <script src="/js/validation.js"></script>
+  <script src="/js/auth.js"></script>
+  <script>
+    initLoginForm();
+  </script>
+</body>
+</html>

@@ -1,5 +1,20 @@
-const { supabaseAdmin } = require('../lib/supabase');
 const { verifyLocalToken } = require('../lib/localAuth');
+const {
+  normalizeRole,
+  resolveUserRole,
+  roleFromClinicEmail,
+  loadProfileForAuthUser,
+  ensureProfileForAuthUser,
+  buildAuthUser,
+  syncProfileRoleForAuthUser,
+} = require('../lib/profile');
+const { supabaseAdmin } = require('../lib/supabase');
+
+function attachSessionRole(user, fallbackEmail = '') {
+  const email = String(user?.email || fallbackEmail || user?.user_metadata?.email || '').trim().toLowerCase();
+  const role = resolveUserRole(user, email);
+  return { ...user, email, role };
+}
 
 async function verifyToken(req, res, next) {
   const authHeader = req.headers.authorization;
@@ -16,10 +31,9 @@ async function verifyToken(req, res, next) {
     if (localUser.is_locked) {
       return res.status(423).json({ error: 'Account is locked. Contact administration.' });
     }
-    req.user = {
+    req.user = attachSessionRole({
       id: localUser.id,
       email: localUser.email,
-      role: localUser.role || 'patient',
       first_name: localUser.first_name,
       middle_name: localUser.middle_name,
       last_name: localUser.last_name,
@@ -30,7 +44,8 @@ async function verifyToken(req, res, next) {
       is_locked: false,
       two_factor_enabled: false,
       isLocal: true,
-    };
+      role: localUser.role,
+    }, localUser.email);
     return next();
   }
 
@@ -43,31 +58,20 @@ async function verifyToken(req, res, next) {
     return res.status(401).json({ error: 'Invalid or expired session.' });
   }
 
-  let { data: profile, error: profileError } = await supabaseAdmin
-    .from('profiles')
-    .select('id, role, first_name, middle_name, last_name, email, phone, profile_photo_url, is_locked, two_factor_enabled, must_change_password, temporary_password_expires_at')
-    .eq('id', data.user.id)
-    .single();
-
-  if (profileError && /profile_photo_url|must_change_password|temporary_password_expires_at|schema cache|does not exist/i.test(profileError.message)) {
-    const fallback = await supabaseAdmin
-      .from('profiles')
-      .select('id, role, first_name, middle_name, last_name, email, phone, is_locked, two_factor_enabled, must_change_password, temporary_password_expires_at')
-      .eq('id', data.user.id)
-      .single();
-    profile = fallback.data;
+  let profile = await loadProfileForAuthUser(supabaseAdmin, data.user);
+  if (!profile) {
+    profile = await ensureProfileForAuthUser(supabaseAdmin, data.user);
+  } else {
+    const synced = await syncProfileRoleForAuthUser(supabaseAdmin, data.user);
+    if (synced) profile = synced;
   }
 
   if (profile?.is_locked) {
     return res.status(423).json({ error: 'Account is locked. Contact administration.' });
   }
 
-  req.user = {
-    id: data.user.id,
-    email: data.user.email,
-    ...profile,
-  };
+  req.user = attachSessionRole(buildAuthUser(data.user, profile), data.user.email);
   next();
 }
 
-module.exports = { verifyToken };
+module.exports = { verifyToken, normalizeRole, attachSessionRole };

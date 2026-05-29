@@ -15,7 +15,9 @@ Full-stack maternity clinic web application with **Node.js**, **HTML/CSS**, and 
 ### 1. Supabase setup
 
 1. Create a project at [supabase.com](https://supabase.com).
-2. Open **SQL Editor** and run `supabase/schema.sql`.
+2. Open **SQL Editor** and run `supabase/schema.sql`, then `supabase/schema-extensions.sql`.
+   Existing projects can run `supabase/2026-05-29-calendar-personalization-emergency.sql` for the new calendar, personalization, and emergency alert tables.
+   If signup says `Database error creating new user`, run `supabase/2026-05-29-disable-auth-signup-triggers.sql`; this app creates the profile from the server after Auth creates the user.
 3. Copy **Project URL**, **anon key**, and **service_role key** from Settings → API.
 
 ### 2. Configure environment

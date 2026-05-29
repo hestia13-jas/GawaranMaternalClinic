@@ -9,6 +9,7 @@ const {
   verifyLocalPassword,
 } = require('../lib/localAuth');
 const { getDashboardPath } = require('../middleware/rbac');
+const { loadProfileForAuthUser, resolveUserRole, roleForRequest } = require('../lib/profile');
 
 const router = express.Router();
 const INCORRECT_LOGIN_MESSAGE = 'Incorrect Email or Password';
@@ -16,6 +17,10 @@ const INCORRECT_LOGIN_MESSAGE = 'Incorrect Email or Password';
 const NAME_RE = /^[A-Za-z\s'-]{2,60}$/;
 const PHONE_RE = /^09\d{9}$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+function allowLocalFallback() {
+  return process.env.USE_LOCAL_FALLBACK !== 'false' && process.env.NODE_ENV !== 'production';
+}
 
 function cleanText(value) {
   return typeof value === 'string' ? value.trim().replace(/\s+/g, ' ') : '';
@@ -173,11 +178,6 @@ router.post('/register', async (req, res) => {
   }
 
   try {
-    const existingLocal = findLocalUserByEmail(values.email);
-    if (existingLocal) {
-      return res.status(409).json({ error: 'An account already exists with this email address.' });
-    }
-
     if (supabaseAdmin) {
       const { data: existingProfile } = await supabaseAdmin
         .from('profiles')
@@ -213,13 +213,39 @@ router.post('/register', async (req, res) => {
             phone: values.phone,
             role: 'patient',
             is_locked: false,
+            is_active: true,
           },
           { onConflict: 'id' }
         );
 
         if (profileError) {
           await supabaseAdmin.auth.admin.deleteUser(userId);
-          return res.status(400).json({ error: profileError.message });
+          const rls = /row-level security|rls/i.test(profileError.message);
+          return res.status(400).json({
+            error: rls
+              ? 'Profile could not be saved (database security policy). Run supabase/fix-profiles-rls-signup.sql in Supabase SQL Editor, and confirm SUPABASE_SERVICE_ROLE_KEY in .env is the service_role key (not anon).'
+              : profileError.message,
+          });
+        }
+
+        const { data: existingPatient, error: patientLookupError } = await supabaseAdmin
+          .from('patients')
+          .select('id')
+          .eq('profile_id', userId)
+          .maybeSingle();
+
+        if (patientLookupError) {
+          await supabaseAdmin.auth.admin.deleteUser(userId);
+          return res.status(400).json({ error: patientLookupError.message });
+        }
+
+        const { error: patientError } = existingPatient
+          ? { error: null }
+          : await supabaseAdmin.from('patients').insert({ profile_id: userId, status: 'outpatient' });
+
+        if (patientError) {
+          await supabaseAdmin.auth.admin.deleteUser(userId);
+          return res.status(400).json({ error: patientError.message });
         }
 
         await logAudit(userId, 'account_created', { email: values.email }, req.ip);
@@ -231,7 +257,20 @@ router.post('/register', async (req, res) => {
         return res.status(409).json({ error: signUpError.message });
       }
 
+      if (!allowLocalFallback()) {
+        return res.status(502).json({ error: `Supabase signup failed: ${signUpError.message}` });
+      }
+
       console.warn(`Supabase signup failed, using local account fallback: ${signUpError.message}`);
+    }
+
+    if (!allowLocalFallback()) {
+      return res.status(503).json({ error: 'Supabase is required, but the database is not configured.' });
+    }
+
+    const existingLocal = findLocalUserByEmail(values.email);
+    if (existingLocal) {
+      return res.status(409).json({ error: 'An account already exists with this email address.' });
     }
 
     createLocalUser(values);
@@ -254,23 +293,29 @@ router.post('/login', async (req, res) => {
   }
 
   let localUser = null;
-  try {
-    localUser = verifyLocalPassword(cleanEmail, password);
-  } catch (err) {
-    if (err.code === 'temporary_password_expired') {
-      return res.status(423).json({ error: err.message });
+  if (allowLocalFallback()) {
+    try {
+      localUser = verifyLocalPassword(cleanEmail, password);
+    } catch (err) {
+      if (err.code === 'temporary_password_expired') {
+        return res.status(423).json({ error: err.message });
+      }
+      throw err;
     }
-    throw err;
   }
 
   if (!supabaseAdmin) {
+    if (!allowLocalFallback()) {
+      return res.status(503).json({ error: 'Supabase is required, but the database is not configured.' });
+    }
     if (!localUser) {
       recordLocalLogin({ email: cleanEmail, success: false, ip: req.ip, device: req.get('user-agent') });
       return res.status(401).json({ error: INCORRECT_LOGIN_MESSAGE });
     }
     recordLocalLogin({ user: localUser, email: cleanEmail, success: true, ip: req.ip, device: req.get('user-agent') });
     const session = createLocalSession(localUser);
-    return res.json({ session, role: localUser.role, redirect: getDashboardPath(localUser.role) });
+      const localRole = roleForRequest(localUser, cleanEmail);
+      return res.json({ session, role: localRole, redirect: getDashboardPath(localRole) });
   }
 
   const { data, error } = await supabaseAdmin.auth.signInWithPassword({ email: cleanEmail, password });
@@ -280,7 +325,8 @@ router.post('/login', async (req, res) => {
       await clearLoginAttempts(cleanEmail);
       recordLocalLogin({ user: localUser, email: cleanEmail, success: true, ip: req.ip, device: req.get('user-agent') });
       const session = createLocalSession(localUser);
-      return res.json({ session, role: localUser.role, redirect: getDashboardPath(localUser.role) });
+      const localRole = roleForRequest(localUser, cleanEmail);
+      return res.json({ session, role: localRole, redirect: getDashboardPath(localRole) });
     }
 
     await recordLoginHistory({ email: cleanEmail, success: false, req });
@@ -290,11 +336,8 @@ router.post('/login', async (req, res) => {
 
   await clearLoginAttempts(cleanEmail);
 
-  const { data: profile } = await supabaseAdmin
-    .from('profiles')
-    .select('role, two_factor_enabled, temporary_password_expires_at')
-    .eq('id', data.user.id)
-    .single();
+  const profile = await loadProfileForAuthUser(supabaseAdmin, data.user);
+  const role = roleForRequest(profile, cleanEmail);
 
   if (profile?.temporary_password_expires_at && new Date(profile.temporary_password_expires_at) < new Date()) {
     return res.status(423).json({ error: 'Temporary password expired. Please contact the clinic administrator.' });
@@ -333,8 +376,8 @@ router.post('/login', async (req, res) => {
 
   res.json({
     session: data.session,
-    role: profile?.role || 'patient',
-    redirect: getDashboardPath(profile?.role || 'patient'),
+    role,
+    redirect: getDashboardPath(role),
   });
 });
 
@@ -357,18 +400,16 @@ router.post('/verify-otp', async (req, res) => {
 
   await supabaseAdmin.from('otp_codes').delete().eq('user_id', userId);
 
-  const { data: profile } = await supabaseAdmin
-    .from('profiles')
-    .select('role')
-    .eq('id', userId)
-    .single();
+  const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(userId);
+  const profile = await loadProfileForAuthUser(supabaseAdmin, authUser?.user || { id: userId, email: session?.user?.email });
+  const role = roleForRequest(profile, authUser?.user?.email || session?.user?.email);
 
   await logAudit(userId, 'otp_verified', {}, req.ip);
 
   res.json({
     session,
-    role: profile?.role || 'patient',
-    redirect: getDashboardPath(profile?.role || 'patient'),
+    role,
+    redirect: getDashboardPath(role),
   });
 });
 

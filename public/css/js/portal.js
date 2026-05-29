@@ -544,9 +544,11 @@ async function renderOverview(el) {
   }
 
   if (role === 'admin' || role === 'staff') {
-    panels.innerHTML = `
+    const emergencyPanel = role === 'admin' ? await renderEmergencyAlertsPanel() : '';
+    panels.innerHTML = emergencyPanel + `
       <div class="panel"><div class="panel-head"><h2>Patient volume</h2></div><div class="panel-body chart-wrap"><canvas id="chartPatients"></canvas></div></div>
       <div class="panel"><div class="panel-head"><h2>Staff performance</h2></div><div class="panel-body" id="staffPerfList"></div></div>`;
+    wireEmergencyAlertActions(panels);
     drawPatientChart(s.charts?.patientStatistics || []);
     const perf = s.charts?.staffPerformance || [];
     document.getElementById('staffPerfList').innerHTML = perf.length
@@ -555,14 +557,35 @@ async function renderOverview(el) {
     return;
   }
 
-  panels.innerHTML = '';
+  const roster = s.dutyRoster || [];
+  const emergencyPanel = ['admin', 'doctor', 'nurse'].includes(role)
+    ? await renderEmergencyAlertsPanel()
+    : '';
+  panels.innerHTML = emergencyPanel + `<div class="panel" style="grid-column:1/-1"><div class="panel-head"><h2>Duty roster</h2></div><div class="panel-body"><table class="data-table"><thead><tr><th>Name</th><th>Shift</th><th>Department</th></tr></thead><tbody>
+    ${roster.length ? roster.map((r) => `<tr><td>${r.name}</td><td>${r.shift}</td><td>${r.department}</td></tr>`).join('') : emptyTableRow(3, 'No roster records found for today.')}
+  </tbody></table></div></div>`;
+  wireEmergencyAlertActions(panels);
 }
 
 async function renderEmergencyAlertsPanel() {
   const data = await api('/emergency-alerts');
 
+  // Surface the schema relationship error clearly so devs can fix it
+  const schemaErr = data?.error && data.error.includes('relationship')
+    ? `<div class="security-banner" style="margin-bottom:1rem;background:#fef3c7;border-color:#f59e0b;color:#92400e">
+        <strong>⚠️ Database schema fix needed</strong>
+        The <code>emergency_alerts</code> table is missing a foreign key relationship to <code>profiles</code>.
+        Run this SQL in your Supabase dashboard → SQL Editor:<br><br>
+        <code style="display:block;background:#fef9c3;padding:.5rem;border-radius:4px;margin-top:.4rem;font-size:.82rem;word-break:break-all">
+          ALTER TABLE emergency_alerts ADD CONSTRAINT fk_emergency_alerts_patient
+          FOREIGN KEY (patient_id) REFERENCES profiles(id) ON DELETE CASCADE;
+        </code>
+        Then refresh the portal.
+      </div>`
+    : '';
+
   const rows = data?.alerts || [];
-  return `<div class="panel emergency-panel" style="grid-column:1/-1"><div class="panel-head"><h2>${icon('emergency')} Emergency alerts</h2>${sourceText(data)}</div><div class="panel-body" style="overflow-x:auto"><table class="data-table"><thead><tr><th>Patient</th><th>Phone</th><th>Message</th><th>Status</th><th>Time</th><th>Action</th></tr></thead><tbody>
+  return `${schemaErr}<div class="panel emergency-panel" style="grid-column:1/-1"><div class="panel-head"><h2>${icon('emergency')} Emergency alerts</h2>${sourceText(data)}</div><div class="panel-body" style="overflow-x:auto"><table class="data-table"><thead><tr><th>Patient</th><th>Phone</th><th>Message</th><th>Status</th><th>Time</th><th>Action</th></tr></thead><tbody>
     ${rows.length ? rows.map((a) => `<tr>
       <td>${escapeHtml(a.patient_name || '-')}</td>
       <td>${escapeHtml(a.phone || '-')}</td>

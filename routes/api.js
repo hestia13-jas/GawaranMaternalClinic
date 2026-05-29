@@ -100,7 +100,7 @@ router.get('/dashboard/stats', verifyToken, async (req, res) => {
       });
     }
 
-    const [nextAppt, records, labs, meds] = await Promise.all([
+    const [nextAppt, records, labs, meds, notifications] = await Promise.all([
       supabaseAdmin
         .from('appointments')
         .select('appointment_date, type')
@@ -112,6 +112,7 @@ router.get('/dashboard/stats', verifyToken, async (req, res) => {
       supabaseAdmin.from('medical_records').select('id', { count: 'exact', head: true }).eq('patient_id', req.user.id),
       supabaseAdmin.from('lab_results').select('id', { count: 'exact', head: true }).eq('patient_id', req.user.id),
       supabaseAdmin.from('medications').select('id', { count: 'exact', head: true }).eq('patient_id', req.user.id).eq('status', 'active'),
+      supabaseAdmin.from('notifications').select('id', { count: 'exact', head: true }).eq('user_id', req.user.id).eq('is_read', false),
     ]);
 
     return res.json({
@@ -120,6 +121,7 @@ router.get('/dashboard/stats', verifyToken, async (req, res) => {
         medicalRecords: records.count || 0,
         labResults: labs.count || 0,
         medications: meds.count || 0,
+        notifications: notifications.count || 0,
       },
       tasks: nextAppt.data
         ? [{ title: nextAppt.data.type || 'Appointment', date: nextAppt.data.appointment_date, type: 'appointment' }]

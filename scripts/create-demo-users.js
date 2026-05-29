@@ -10,11 +10,11 @@ const { createClient } = require('@supabase/supabase-js');
 const DEMO_PASSWORD = 'Demo@Gawaran2026';
 
 const USERS = [
-  { email: 'admin@gawaranclinic.ph', role: 'admin', firstName: 'Admin', lastName: 'Gawaran' },
-  { email: 'doctor@gawaranclinic.ph', role: 'doctor', firstName: 'Maria', lastName: 'Santos' },
-  { email: 'nurse@gawaranclinic.ph', role: 'nurse', firstName: 'Ana', lastName: 'Reyes' },
-  { email: 'staff@gawaranclinic.ph', role: 'staff', firstName: 'Juan', lastName: 'Cruz' },
-  { email: 'patient@gawaranclinic.ph', role: 'patient', firstName: 'Jane', lastName: 'Dela Cruz' },
+  { email: 'admin@clinicgawaran.ph', role: 'admin', firstName: 'Admin', lastName: 'Gawaran' },
+  { email: 'doctor@clinicgawaran.ph', role: 'doctor', firstName: 'Maria', lastName: 'Santos' },
+  { email: 'nurse@clinicgawaran.ph', role: 'nurse', firstName: 'Ana', lastName: 'Reyes' },
+  { email: 'staff@clinicgawaran.ph', role: 'staff', firstName: 'Juan', lastName: 'Cruz' },
+  { email: 'patient@clinicgawaran.ph', role: 'patient', firstName: 'Jane', lastName: 'Dela Cruz' },
 ];
 
 async function main() {
