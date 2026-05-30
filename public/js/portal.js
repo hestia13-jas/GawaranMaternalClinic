@@ -1239,40 +1239,11 @@ async function renderAppointments(el) {
 }
 
 async function decideAppointment(id, status) {
-  let reason = '';
-  let newDate = '';
-  if (status === 'denied') {
-    reason = window.prompt('Please provide the reason for denial:') ?? '';
-    if (!reason || reason.trim().length < 5) {
-      window.alert('A clear denial reason is required.');
-      return;
-    }
-  } else if (status === 'cancelled') {
-    const response = window.prompt('Reason for cancelling this appointment (the patient will be notified):');
-    if (response === null) return;
-    reason = response;
-    if (reason.trim().length < 3) {
-      window.alert('A cancellation reason is required.');
-      return;
-    }
-  } else if (status === 'done') {
-    const confirmed = window.confirm('Mark this appointment as completed? This will be reflected on the patient\'s record.');
-    if (!confirmed) return;
-  } else if (status === 'moved') {
-    const response = window.prompt('Enter the new appointment date and time (YYYY-MM-DD HH:MM):');
-    if (response === null) return;
-    const cleaned = response.trim().replace(' ', 'T');
-    const parsed = new Date(cleaned);
-    if (!cleaned || Number.isNaN(parsed.getTime())) {
-      window.alert('Enter a valid date and time.');
-      return;
-    }
-    newDate = cleaned.length === 16 ? cleaned : parsed.toISOString();
-    reason = window.prompt('Reason or note for moving this appointment (optional):') ?? '';
-  }
+  const confirmed = await showDecideModal(id, status);
+  if (!confirmed) return;
   const res = await api(`/appointments/${id}/status`, {
     method: 'PATCH',
-    body: JSON.stringify({ status, reason: reason.trim(), date: newDate }),
+    body: JSON.stringify({ status: confirmed.status, reason: confirmed.reason, date: confirmed.date }),
   });
   if (res?.error) {
     showAlert(res.error, 'error');
@@ -1280,6 +1251,89 @@ async function decideAppointment(id, status) {
   }
   await refreshNotifications();
   await navigate('appointments');
+}
+
+function showDecideModal(id, status) {
+  return new Promise((resolve) => {
+    const existing = document.getElementById('gmcDecideModal');
+    if (existing) existing.remove();
+
+    const cfgMap = {
+      confirmed: { title: 'Accept Appointment', icon: '\u2705', btnClass: 'btn-primary', btnLabel: 'Accept' },
+      denied: { title: 'Deny Appointment', icon: '\u274c', btnClass: 'btn-danger', btnLabel: 'Deny' },
+      cancelled: { title: 'Cancel Appointment', icon: '\u26a0\ufe0f', btnClass: 'btn-danger', btnLabel: 'Cancel Appointment' },
+      done: { title: 'Mark as Completed', icon: '\u2714\ufe0f', btnClass: 'btn-primary', btnLabel: 'Mark Done' },
+      moved: { title: 'Reschedule Appointment', icon: '\ud83d\udcc5', btnClass: 'btn-primary', btnLabel: 'Reschedule' },
+    };
+    const cfg = cfgMap[status] || { title: 'Update Appointment', icon: '\u2139\ufe0f', btnClass: 'btn-primary', btnLabel: 'Confirm' };
+
+    const needsReason = status === 'denied' || status === 'cancelled';
+    const needsDate = status === 'moved';
+    const needsConfirm = status === 'done' || status === 'confirmed';
+    const minNow = new Date().toISOString().slice(0, 16);
+
+    const modal = document.createElement('div');
+    modal.id = 'gmcDecideModal';
+    modal.className = 'modal-backdrop';
+    modal.innerHTML = `
+      <div class="confirm-modal" role="dialog" aria-modal="true" style="max-width:440px">
+        <div style="font-size:2rem;text-align:center;margin-bottom:.5rem">${cfg.icon}</div>
+        <h2 style="text-align:center;margin-bottom:.75rem">${cfg.title}</h2>
+        ${needsConfirm ? `<p style="text-align:center;color:var(--gray-500);margin-bottom:1rem;line-height:1.5">${status === 'done' ? "Mark this appointment as completed? This will be reflected on the patient's record." : 'Approve this appointment request? The patient will be notified.'}</p>` : ''}
+        ${needsReason ? `
+          <label style="display:block;font-weight:600;margin-bottom:.35rem;font-size:.9rem">${status === 'denied' ? 'Reason for denial' : 'Reason for cancellation'} <span style="color:#dc2626">*</span></label>
+          <textarea id="gmcDecideReason" rows="3" style="width:100%;border:1px solid var(--gray-300,#d1d5db);border-radius:.4rem;padding:.5rem .65rem;font-size:.9rem;resize:vertical;box-sizing:border-box" placeholder="${status === 'denied' ? 'e.g. No available slot on this date...' : 'e.g. Patient requested cancellation...'}"></textarea>
+          <p id="gmcDecideReasonErr" style="color:#dc2626;font-size:.82rem;margin:.25rem 0 .5rem;display:none">Please enter a reason.</p>
+        ` : ''}
+        ${needsDate ? `
+          <label style="display:block;font-weight:600;margin-bottom:.35rem;font-size:.9rem">New appointment date &amp; time <span style="color:#dc2626">*</span></label>
+          <input id="gmcDecideDate" type="datetime-local" min="${minNow}" style="width:100%;border:1px solid var(--gray-300,#d1d5db);border-radius:.4rem;padding:.5rem .65rem;font-size:.9rem;box-sizing:border-box" />
+          <p id="gmcDecieDateErr" style="color:#dc2626;font-size:.82rem;margin:.25rem 0 .5rem;display:none">Please select a valid future date and time.</p>
+          <label style="display:block;font-weight:600;margin:.75rem 0 .35rem;font-size:.9rem">Note <span style="color:var(--gray-400);font-weight:400">(optional)</span></label>
+          <input id="gmcDecideMoveNote" type="text" style="width:100%;border:1px solid var(--gray-300,#d1d5db);border-radius:.4rem;padding:.5rem .65rem;font-size:.9rem;box-sizing:border-box" placeholder="e.g. Doctor requested earlier slot" />
+        ` : ''}
+        <div class="confirm-actions" style="margin-top:1.25rem">
+          <button type="button" class="btn btn-outline" id="gmcDecideCancel">Cancel</button>
+          <button type="button" class="btn ${cfg.btnClass}" id="gmcDecideOk">${cfg.btnLabel}</button>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+
+    const close = (result) => { modal.remove(); resolve(result); };
+
+    document.getElementById('gmcDecideCancel').addEventListener('click', () => close(null));
+    modal.addEventListener('click', (e) => { if (e.target === modal) close(null); });
+
+    document.getElementById('gmcDecideOk').addEventListener('click', () => {
+      let reason = '';
+      let date = '';
+      if (needsReason) {
+        reason = (document.getElementById('gmcDecideReason')?.value || '').trim();
+        const minLen = status === 'denied' ? 5 : 3;
+        if (reason.length < minLen) {
+          const err = document.getElementById('gmcDecideReasonErr');
+          if (err) { err.textContent = `Please enter at least ${minLen} characters.`; err.style.display = 'block'; }
+          return;
+        }
+      }
+      if (needsDate) {
+        date = document.getElementById('gmcDecideDate')?.value || '';
+        if (!date || new Date(date) <= new Date()) {
+          const err = document.getElementById('gmcDecieDateErr');
+          if (err) err.style.display = 'block';
+          return;
+        }
+        const note = (document.getElementById('gmcDecideMoveNote')?.value || '').trim();
+        if (note) reason = note;
+      }
+      close({ status, reason, date });
+    });
+
+    setTimeout(() => {
+      const first = modal.querySelector('textarea, input[type="datetime-local"], input[type="text"]');
+      if (first) first.focus();
+    }, 50);
+  });
 }
 
 async function renderPatients(el) {

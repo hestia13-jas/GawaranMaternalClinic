@@ -110,16 +110,26 @@ function isPastDateKey(value) {
   return /^\d{4}-\d{2}-\d{2}$/.test(value) && value < todayKey();
 }
 
+function isUnassignedDoctor(value) {
+  const text = String(value || '').trim();
+  return !text || /^unassigned$/i.test(text) || /^assigned by clinic$/i.test(text);
+}
+
 function appointmentPublicRow(a) {
-  const doctorName = a.doctor_name && a.doctor_name !== 'Unassigned' ? a.doctor_name : '';
+  const patientProfile = a.patient || a.profiles || null;
+  const doctorProfile = a.doctor || null;
+  const patientName = a.patient_name || fullName(patientProfile);
+  const doctorName = !isUnassignedDoctor(a.doctor_name)
+    ? a.doctor_name
+    : (doctorProfile ? fullName(doctorProfile) : '');
   return {
     id: a.id,
-    patient_name: a.patient_name || 'Patient',
-    patient_phone: a.patient_phone || null,
+    patient_name: patientName || 'Patient',
+    patient_phone: a.patient_phone || patientProfile?.phone || null,
     type: a.type || 'Appointment',
     date: a.appointment_date,
     status: a.status || 'pending',
-    doctor: doctorName,
+    doctor: isUnassignedDoctor(doctorName) ? '' : doctorName,
     doctor_id: a.doctor_id,
     notes: a.notes,
     created_at: a.created_at,
@@ -661,23 +671,45 @@ router.get('/appointments', verifyToken, async (req, res) => {
     return res.json({ appointments: listLocalAppointments(req.user), source: 'local-database' });
   }
 
-  let query = supabaseAdmin.from('appointments').select('*').order('appointment_date', { ascending: true });
+  const localRows = listLocalAppointments(req.user);
+  let query = supabaseAdmin
+    .from('appointments')
+    .select('*, patient:profiles!appointments_patient_id_fkey(first_name, last_name, email, phone), doctor:profiles!appointments_doctor_id_fkey(first_name, last_name, email)')
+    .order('appointment_date', { ascending: true });
   if (req.user.role === 'patient') query = query.eq('patient_id', req.user.id);
 
-  const { data, error } = await query.limit(100);
+  const { data, error } = await query.limit(200);
   if (error) {
-    if (/appointments|schema cache|does not exist/i.test(error.message)) {
-      return res.json({ appointments: [], source: 'database' });
+    if (/relationship|appointments_doctor_id_fkey|appointments_patient_id_fkey|schema cache/i.test(error.message || '')) {
+      let fallback = supabaseAdmin.from('appointments').select('*').order('appointment_date', { ascending: true });
+      if (req.user.role === 'patient') fallback = fallback.eq('patient_id', req.user.id);
+      const fallbackResult = await fallback.limit(200);
+      if (fallbackResult.error) return res.status(500).json({ error: fallbackResult.error.message });
+      const fallbackRows = req.user.role === 'doctor'
+        ? (fallbackResult.data || []).filter((appointment) =>
+            !appointment.doctor_id ||
+            appointment.doctor_id === req.user.id ||
+            (appointment.status || 'pending').toLowerCase() === 'pending'
+          )
+        : (fallbackResult.data || []);
+      return res.json({
+        appointments: [...fallbackRows.map(appointmentPublicRow), ...localRows],
+        source: localRows.length ? 'database + local fallback' : 'database',
+      });
     }
     return res.status(500).json({ error: error.message });
   }
   const rows = req.user.role === 'doctor'
-    ? (data || []).filter((appointment) => !appointment.doctor_id || appointment.doctor_id === req.user.id)
+    ? (data || []).filter((appointment) =>
+        !appointment.doctor_id ||
+        appointment.doctor_id === req.user.id ||
+        (appointment.status || 'pending').toLowerCase() === 'pending'
+      )
     : (data || []);
 
   res.json({
-    appointments: rows.map(appointmentPublicRow),
-    ...empty(),
+    appointments: [...rows.map(appointmentPublicRow), ...localRows],
+    source: localRows.length ? 'database + local fallback' : 'database',
   });
 });
 
@@ -726,13 +758,21 @@ router.get('/appointments/availability', verifyToken, async (req, res) => {
       .then((result) => result, () => ({ data: [], error: null })),
   ]);
   if (error) return res.status(500).json({ error: error.message });
+  const localAvailabilityRows = listLocalAppointments({ role: 'admin' }).filter((appointment) => {
+    const date = new Date(appointment.date);
+    return !Number.isNaN(date.getTime())
+      && date >= start
+      && date <= end
+      && (!doctorId || appointment.doctor_id === doctorId)
+      && ['pending', 'confirmed', 'moved'].includes(appointment.status);
+  });
   res.json({
-    appointments: (data || []).map((item) => ({
+    appointments: [...(data || []).map((item) => ({
       id: item.id,
       doctor_id: item.doctor_id,
       date: item.appointment_date,
       status: item.status,
-    })),
+    })), ...localAvailabilityRows],
     unavailableDays: (unavailableResult.data || [])
       .filter((item) => !doctorId || item.doctor_id === doctorId)
       .map((item) => ({ doctor_id: item.doctor_id, date: item.unavailable_date })),
@@ -894,48 +934,69 @@ router.post('/appointments', verifyToken, async (req, res) => {
         slotTaken: true,
       });
     }
+    if (/row-level security|violates row-level security|permission denied/i.test(error.message || '')) {
+      try {
+        const appointment = createLocalAppointment(req.user, { type, date, notes, doctorId, doctorName });
+        return res.status(201).json({
+          appointment,
+          source: 'local-database',
+          warning: 'Database policy blocked saving the request, so it was saved in the local clinic store.',
+        });
+      } catch (err) {
+        if (err.code === 'slot_taken') {
+          return res.status(409).json({
+            error: 'This slot is already taken. Please choose another.',
+            slotTaken: true,
+          });
+        }
+        return res.status(500).json({ error: err.message || 'Unable to book appointment.' });
+      }
+    }
     return res.status(400).json({ error: error.message });
   }
 
-  const notificationTargets = [];
+  await supabaseAdmin.from('notifications').insert({
+    user_id: req.user.id,
+    title: 'Appointment request submitted',
+    message: `Your ${type} request for ${new Date(date).toLocaleString()} is pending review.`,
+    type: 'appointment',
+    section: 'appointments',
+    target_id: data.id,
+  });
+
+  const notificationTargets = new Set();
+  const [{ data: admins }, { data: doctors }] = await Promise.all([
+    supabaseAdmin.from('profiles').select('id, email, first_name, last_name').eq('role', 'admin').eq('is_active', true),
+    supabaseAdmin.from('profiles').select('id, email, first_name, last_name').eq('role', 'doctor').eq('is_active', true),
+  ]);
+  const staffToEmail = [];
+  (admins || []).forEach((admin) => {
+    notificationTargets.add(admin.id);
+    staffToEmail.push(admin);
+  });
   if (doctorId) {
-    notificationTargets.push(doctorId);
+    const selectedDoctor = (doctors || []).find((doctor) => doctor.id === doctorId)
+      || (await supabaseAdmin.from('profiles').select('id, email, first_name, last_name').eq('id', doctorId).maybeSingle()).data;
+    if (selectedDoctor) {
+      notificationTargets.add(selectedDoctor.id);
+      staffToEmail.push(selectedDoctor);
+    }
   } else {
-    const [{ data: admins }, { data: doctors }] = await Promise.all([
-      supabaseAdmin.from('profiles').select('id, email, first_name, last_name').eq('role', 'admin').eq('is_active', true),
-      supabaseAdmin.from('profiles').select('id, email, first_name, last_name').eq('role', 'doctor').eq('is_active', true),
-    ]);
-    notificationTargets.push(...(admins || []).map((admin) => admin.id));
-    notificationTargets.push(...(doctors || []).map((doctor) => doctor.id));
-    for (const admin of admins || []) {
-      await sendAppointmentRequestEmail({
-        to: admin.email,
-        recipientName: fullName(admin),
-        appointment: { ...data, date, patient_name: fullName(req.user), type },
-      });
-    }
-    for (const doctor of doctors || []) {
-      await sendAppointmentRequestEmail({
-        to: doctor.email,
-        recipientName: fullName(doctor),
-        appointment: { ...data, date, patient_name: fullName(req.user), type },
-      });
-    }
+    (doctors || []).forEach((doctor) => {
+      notificationTargets.add(doctor.id);
+      staffToEmail.push(doctor);
+    });
+  }
+  for (const recipient of staffToEmail.filter((item, index, arr) => item?.email && arr.findIndex((other) => other.id === item.id) === index)) {
+    await sendAppointmentRequestEmail({
+      to: recipient.email,
+      recipientName: fullName(recipient),
+      appointment: { ...data, date, patient_name: fullName(req.user), type },
+    });
   }
 
-  if (doctorId) {
-    const { data: doctor } = await supabaseAdmin.from('profiles').select('id, email, first_name, last_name').eq('id', doctorId).maybeSingle();
-    if (doctor) {
-      await sendAppointmentRequestEmail({
-        to: doctor.email,
-        recipientName: fullName(doctor),
-        appointment: { ...data, date, patient_name: fullName(req.user), type },
-      });
-    }
-  }
-
-  if (notificationTargets.length) {
-    await supabaseAdmin.from('notifications').insert(notificationTargets.map((userId) => ({
+  if (notificationTargets.size) {
+    await supabaseAdmin.from('notifications').insert([...notificationTargets].map((userId) => ({
       user_id: userId,
       title: 'New appointment request',
       message: `${fullName(req.user)} requested ${type} on ${new Date(date).toLocaleString()}.`,
@@ -1119,11 +1180,26 @@ router.patch('/appointments/:id/status', verifyToken, requireRole('admin', 'doct
 
   const { data: appointment, error: readError } = await supabaseAdmin
     .from('appointments')
-    .select('*, profiles!appointments_patient_id_fkey(email, first_name, last_name)')
+    .select('*, patient:profiles!appointments_patient_id_fkey(email, first_name, last_name, phone), doctor:profiles!appointments_doctor_id_fkey(email, first_name, last_name)')
     .eq('id', appointmentId)
     .single();
 
-  if (readError || !appointment) return res.status(404).json({ error: 'Appointment not found.' });
+  if (readError || !appointment) {
+    try {
+      const localAppointment = updateLocalAppointmentStatus({ appointmentId, status, reason, actor: req.user, date: newDate });
+      if (!localAppointment) return res.status(404).json({ error: 'Appointment not found.' });
+      await sendAppointmentEmail({
+        to: localAppointment.patient_email,
+        patientName: localAppointment.patient_name,
+        status,
+        appointment: localAppointment,
+        reason,
+      });
+      return res.json({ appointment: localAppointment, source: 'local-database' });
+    } catch (err) {
+      return res.status(err.code === 'slot_conflict' ? 409 : 500).json({ error: err.message });
+    }
+  }
 
   if (status === 'moved') {
     const sched = await refreshCache(supabaseAdmin);
@@ -1133,9 +1209,9 @@ router.patch('/appointments/:id/status', verifyToken, requireRole('admin', 'doct
   }
 
   const assignedDoctorId = appointment.doctor_id || (req.user.role === 'doctor' && ['confirmed', 'moved'].includes(status) ? req.user.id : null);
-  const assignedDoctorName = appointment.doctor_name && appointment.doctor_name !== 'Unassigned'
+  const assignedDoctorName = !isUnassignedDoctor(appointment.doctor_name)
     ? appointment.doctor_name
-    : (req.user.role === 'doctor' && assignedDoctorId === req.user.id ? fullName(req.user) : appointment.doctor_name);
+    : (req.user.role === 'doctor' && assignedDoctorId === req.user.id ? fullName(req.user) : (appointment.doctor ? fullName(appointment.doctor) : null));
   const targetDate = status === 'moved' ? newDate : appointment.appointment_date;
 
   if (['confirmed', 'moved'].includes(status) && assignedDoctorId) {
@@ -1207,8 +1283,8 @@ router.patch('/appointments/:id/status', verifyToken, requireRole('admin', 'doct
   });
 
   await sendAppointmentEmail({
-    to: appointment.profiles?.email,
-    patientName: fullName(appointment.profiles),
+    to: appointment.patient?.email,
+    patientName: fullName(appointment.patient),
     status,
     appointment: { ...appointment, date: targetDate },
     reason,
@@ -1226,6 +1302,7 @@ router.get('/notifications', verifyToken, async (req, res) => {
       source: 'local-database',
     });
   }
+  const localNotifications = listLocalNotifications(req.user);
 
   const { data, error } = await supabaseAdmin
     .from('notifications')
@@ -1235,13 +1312,17 @@ router.get('/notifications', verifyToken, async (req, res) => {
     .limit(20);
 
   if (error) return res.status(500).json({ error: error.message });
-  res.json({
-    notifications: (data || []).map((item) => ({
+  const notifications = [
+    ...(data || []).map((item) => ({
       ...item,
       section: item.section || sectionForNotification(item.type),
     })),
-    unread: (data || []).filter((item) => !item.is_read).length,
-    source: 'database',
+    ...localNotifications,
+  ].sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0)).slice(0, 20);
+  res.json({
+    notifications,
+    unread: notifications.filter((item) => !item.is_read).length,
+    source: localNotifications.length ? 'database + local fallback' : 'database',
   });
 });
 
