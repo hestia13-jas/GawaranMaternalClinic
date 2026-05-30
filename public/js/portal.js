@@ -148,14 +148,14 @@ function fmtDate(d) {
   if (!d) return '-';
   const date = new Date(d);
   if (Number.isNaN(date.getTime())) return d;
-  return date.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
+  return date.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short', hour12: true });
 }
 
 function fmtTime(d) {
   if (!d) return '-';
   const date = new Date(d);
   if (Number.isNaN(date.getTime())) return d;
-  return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: true });
 }
 
 function emptyTableRow(cols, message = 'No records found in the database yet.') {
