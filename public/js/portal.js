@@ -158,6 +158,15 @@ function fmtTime(d) {
   return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: true });
 }
 
+function fmtTimeStr(t) {
+  if (!t) return '-';
+  const [h, m] = t.split(':').map(Number);
+  if (Number.isNaN(h) || Number.isNaN(m)) return t;
+  const date = new Date();
+  date.setHours(h, m, 0, 0);
+  return date.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', hour12: true });
+}
+
 function emptyTableRow(cols, message = 'No records found in the database yet.') {
   return `<tr><td colspan="${cols}" class="empty-state">${message}</td></tr>`;
 }
@@ -816,7 +825,7 @@ function updateSlotOptions(bookedRows, unavailableDays = [], doctorId = '', clos
     const val = slotDateTime(dateText, slot);
     if (!booked && !firstAvail) firstAvail = { val, type: slot.serviceName };
     return `<tr class="slot-row ${booked ? 'slot-booked' : 'slot-available'}" data-slot-val="${booked ? '' : val}" data-slot-type="${escapeHtml(slot.serviceName)}" style="${booked ? 'opacity:.5;cursor:default' : 'cursor:pointer'}">
-      <td style="padding:.5rem .75rem;font-weight:600;white-space:nowrap">${slot.startTime}\u2013${slot.endTime}</td>
+      <td style="padding:.5rem .75rem;font-weight:600;white-space:nowrap">${fmtTimeStr(slot.startTime)}\u2013${fmtTimeStr(slot.endTime)}</td>
       <td style="padding:.5rem .75rem;width:100%">${escapeHtml(slot.serviceName)}</td>
       <td style="padding:.5rem .75rem;text-align:right;white-space:nowrap">${booked ? '<span style="color:#9ca3af;font-size:.82rem">Booked</span>' : '<span class="badge badge-confirmed" style="font-size:.78rem">Available</span>'}</td>
     </tr>`;
